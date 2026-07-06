@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>Hotel Roomboy System</title>
+  <title>Hotel Worksheet System</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100 font-sans">
 
-  <!-- Halaman Login -->
+  <!-- HALAMAN LOGIN -->
   <div id="halamanLogin" class="flex items-center justify-center min-h-screen p-4">
     <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-6">
       <div class="text-center mb-6">
@@ -31,7 +30,7 @@
     </div>
   </div>
 
-  <!-- Halaman Supervisor -->
+  <!-- HALAMAN SUPERVISOR -->
   <div id="halamanSupervisor" class="hidden max-w-4xl mx-auto p-4">
     <div class="bg-white rounded-lg shadow p-4 mb-4 flex justify-between items-center">
       <h2 class="text-xl font-bold text-gray-800">📋 Pembagian Tugas Kamar</h2>
@@ -72,7 +71,7 @@
     </div>
   </div>
 
-  <!-- Halaman Roomboy -->
+  <!-- HALAMAN ROOMBOY -->
   <div id="halamanRoomboy" class="hidden max-w-xl mx-auto p-4">
     <div class="bg-white rounded-lg shadow p-4 mb-4 flex justify-between items-center">
       <h2 class="text-lg font-bold text-gray-800">🛏️ My Worksheet</h2>
@@ -99,7 +98,8 @@
   </div>
 
   <script>
-    const URL_GAS = "https://script.google.com/macros/s/AKfycbwVf02mo0Aig6g65N1XCZvcLV15lbUj3kX_vBwWUEREsh-PQ6SEk8WgJcMLSHuGtuyL/exec"; // GANTI DENGAN URL ANDA
+    // 👇 GANTI BAGIAN INI DENGAN URL DARI GOOGLE APPS SCRIPT KAMU
+    const URL_GAS = "https://script.google.com/macros/s/AKfycbzJIfREweC5Q07hFxh3JAH9U123trVoSod5YXDyZpAFonWe-HIpWuaISCRA2niH7N7A/exec";
     let nomorBaris = 1;
     let pengguna = {};
 
@@ -110,18 +110,23 @@
       const pesan = document.getElementById("pesanLogin");
       pesan.classList.add("hidden");
 
-      if (!user || !pass) return pesan.textContent = "Isi username dan password!";
+      if (!user || !pass) {
+        pesan.textContent = "Isi username dan password!";
+        pesan.classList.remove("hidden");
+        return;
+      }
 
       try {
         const res = await fetch(URL_GAS, {
           method: "POST",
-          body: JSON.stringify({fungsi: "login", user, pass})
+          body: JSON.stringify({ fungsi: "login", user: user, pass: pass })
         });
         const hasil = await res.json();
         if (hasil.status === "ok") {
-          pengguna = {nama: hasil.nama, peran: hasil.peran};
-          if (hasil.peran === "Supervisor") tampilkanHalaman("Supervisor");
-          else {
+          pengguna = { nama: hasil.nama, peran: hasil.peran };
+          if (hasil.peran === "Supervisor") {
+            tampilkanHalaman("Supervisor");
+          } else {
             document.getElementById("rbNama").value = hasil.nama;
             tampilkanHalaman("Roomboy");
           }
@@ -129,9 +134,10 @@
           pesan.textContent = hasil.pesan;
           pesan.classList.remove("hidden");
         }
-      } catch {
+      } catch (err) {
         pesan.textContent = "Gagal terhubung ke server!";
         pesan.classList.remove("hidden");
+        console.error(err);
       }
     }
 
@@ -203,7 +209,7 @@
 
       const res = await fetch(URL_GAS, {
         method: "POST",
-        body: JSON.stringify({fungsi: "simpanTugas", data: data})
+        body: JSON.stringify({ fungsi: "simpanTugas", data: data })
       });
       const hasil = await res.json();
       alert(hasil.pesan);
@@ -220,13 +226,16 @@
 
       const res = await fetch(URL_GAS, {
         method: "POST",
-        body: JSON.stringify({fungsi: "ambilTugas", tanggal, shift, nama})
+        body: JSON.stringify({ fungsi: "ambilTugas", tanggal, shift, nama })
       });
       const daftar = await res.json();
       const wadah = document.getElementById("daftarKamarRB");
       wadah.innerHTML = "";
 
-      if (daftar.length === 0) return wadah.innerHTML = "<p class='text-center text-gray-500'>Belum ada tugas untuk hari ini</p>";
+      if (daftar.length === 0) {
+        wadah.innerHTML = "<p class='text-center text-gray-500'>Belum ada tugas untuk hari ini</p>";
+        return;
+      }
 
       daftar.forEach(kamar => {
         const blok = document.createElement("div");
@@ -306,7 +315,7 @@
 
       const res = await fetch(URL_GAS, {
         method: "POST",
-        body: JSON.stringify({fungsi: "simpanLaporan", data: data})
+        body: JSON.stringify({ fungsi: "simpanLaporan", data: data })
       });
       const hasil = await res.json();
       alert(hasil.pesan);
@@ -315,6 +324,8 @@
       tombol.classList.add("bg-gray-400");
       tombol.disabled = true;
     }
+
+    tambahBaris();
   </script>
 </body>
 </html>
