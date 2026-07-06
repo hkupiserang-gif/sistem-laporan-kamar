@@ -22,7 +22,6 @@
     h3 {font-size:16px; color:#0a2351; margin-bottom:12px; padding-bottom:5px; border-bottom:1px solid #eee;}
     #halamanForm {display:none;}
     .info-user {color:#0a2351; font-weight:bold; margin-bottom:15px; font-size:15px;}
-    .info-kamar {background:#e7f0ff; padding:8px; border-radius:4px; margin:10px 0; font-size:14px;}
   </style>
 </head>
 <body>
@@ -52,18 +51,19 @@
   <div class="header">
     <h2>ROOMBOY CONTROL SHEET</h2>
     <p>Date: <span id="tanggal"></span></p>
-    <p class="info-user">👤 Petugas: <span id="namaPetugas"></span> | ⏰ Shift: <span id="shiftOtomatis"></span></p>
-    <div class="info-kamar">📋 Daftar Kamar Hari Ini: <span id="daftarKamarTampil"></span></div>
+    <p class="info-user">👤 Petugas: <span id="namaPetugas"></span> | ⏰ Shift: <span id="shiftInput"></span></p>
   </div>
 
   <div class="card">
-    <h3>INFORMASI KAMAR</h3>
+    <h3>INFORMASI KAMAR & SHIFT</h3>
     <div class="row">
       <div class="col"><label>No Urut</label><input type="number" id="noUrut" min="1" placeholder="1,2,3..."></div>
-      <div class="col">
-        <label>No Of Room</label>
-        <select id="noKamar" required>
-          <option value="">-- Pilih Kamar --</option>
+      <div class="col"><label>No Of Room</label><input type="text" id="noKamar" placeholder="Contoh: 201" required></div>
+      <div class="col"><label>Shift</label>
+        <select id="shiftInput">
+          <option value="Morning">Morning</option>
+          <option value="Afternoon">Afternoon</option>
+          <option value="Night">Night</option>
         </select>
       </div>
       <div class="col"><label>Floor / Section</label><input type="text" id="floorSection" placeholder="Contoh: Lantai 2 / Wing A"></div>
@@ -160,12 +160,10 @@
 </div>
 
 <script>
-// GANTI URL INI SETELAH SEBARKAN ULANG DI GOOGLE APPS SCRIPT
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw7xInWy3qVA2DBFBaV0cVqPu8UrB8rt0TY8docb5GbBHOCOuH19JL2ow_86-3Erfgs/exec";
+// GANTI DENGAN URL BARU SETELAH DISEBARKAN
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz6nMtQDbYpIEqvNc1TpquQ4gFMzuCxcisNlC34TP-ydk5o39Q8PsGrNDYGX1PQPe4Z/exec";
 
-let namaLengkap = "";
-let shiftSaya = "";
-let daftarKamarSaya = [];
+let namaPetugas = "";
 let timeIn = "";
 
 document.getElementById("tanggal").textContent = new Date().toLocaleDateString("en-GB");
@@ -185,48 +183,16 @@ async function login() {
     const hasil = await res.json();
 
     if (hasil.status === "sukses") {
-      namaLengkap = hasil.namaLengkap;
-      document.getElementById("namaPetugas").textContent = namaLengkap;
+      namaPetugas = hasil.nama;
+      document.getElementById("namaPetugas").textContent = namaPetugas;
       pesan.textContent = "";
-      await ambilPembagianKamar();
+      document.getElementById("halamanLogin").style.display = "none";
+      document.getElementById("halamanForm").style.display = "block";
     } else {
       pesan.textContent = "❌ " + hasil.pesan;
     }
   } catch (err) {
     pesan.textContent = "❌ Tidak dapat terhubung ke server!";
-  }
-}
-
-async function ambilPembagianKamar() {
-  try {
-    const res = await fetch(APPS_SCRIPT_URL, {
-      method: "POST",
-      body: JSON.stringify({ aksi: "ambilKamar", namaLengkap: namaLengkap })
-    });
-    const hasil = await res.json();
-
-    if (hasil.status === "ada") {
-      shiftSaya = hasil.shift;
-      daftarKamarSaya = hasil.kamar;
-      document.getElementById("shiftOtomatis").textContent = shiftSaya;
-      document.getElementById("daftarKamarTampil").textContent = daftarKamarSaya.join(", ");
-
-      const pilihKamar = document.getElementById("noKamar");
-      pilihKamar.innerHTML = `<option value="">-- Pilih Kamar --</option>`;
-      daftarKamarSaya.forEach(k => {
-        const opt = document.createElement("option");
-        opt.value = k;
-        opt.textContent = k;
-        pilihKamar.appendChild(opt);
-      });
-
-      document.getElementById("halamanLogin").style.display = "none";
-      document.getElementById("halamanForm").style.display = "block";
-    } else {
-      alert("ℹ️ " + hasil.pesan);
-    }
-  } catch (err) {
-    alert("❌ Gagal memuat data: " + err.message);
   }
 }
 
@@ -241,8 +207,8 @@ async function simpan() {
 
   const data = {
     aksi: "simpan",
-    namaLengkap: namaLengkap,
-    shift: shiftSaya,
+    namaPetugas: namaPetugas,
+    shift: document.getElementById("shiftInput").value,
     floorSection: document.getElementById("floorSection").value,
     noUrut: document.getElementById("noUrut").value,
     noKamar: document.getElementById("noKamar").value,
@@ -295,10 +261,10 @@ async function simpan() {
     });
     const hasil = await res.json();
     if (hasil.status === "tersimpan") {
-      alert("✅ Data berhasil disimpan!");
+      alert("✅ Data berhasil disimpan ke laporan!");
       location.reload();
     } else {
-      alert("❌ Gagal menyimpan data!");
+      alert("❌ Gagal menyimpan!");
     }
   } catch (err) {
     alert("❌ Kesalahan: " + err.message);
