@@ -67,8 +67,8 @@
   </div>
 
   <script>
-    // 👇 GANTI DENGAN URL ANDA
-    const URL_GAS = "https://script.google.com/macros/s/AKfycbwTgZAGmd3woHP9WSuvXWyk7jWcSGmI3cETVQqFnuIZEjFSFiQHQtW3Y-Nj1EocH1Xv/exec";
+    // 👇👇👇 GANTI BARIS INI DENGAN URL YANG KAMU DAPATKAN TADI 👇👇👇
+    const URL_GAS = "https://script.google.com/macros/s/AKfycbwfBCwo5uPnU58cLCzrZ1TNVxF03JLCKXoov1dA7vNimH1XpL-GyoXR4Z9LiNlwSawV/exec";
 
     let nomorBaris = 1;
     let pengguna = {};
@@ -91,7 +91,6 @@
       pesan.className = "text-center text-sm text-blue-500 mt-2";
       pesan.classList.remove("hidden");
 
-      // Pakai FormData = paling kompatibel
       const form = new FormData();
       form.append("fungsi", "login");
       form.append("user", user);
