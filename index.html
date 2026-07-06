@@ -6,45 +6,72 @@
   <title>Roomboy Control Sheet</title>
   <style>
     * {box-sizing:border-box; margin:0; padding:0; font-family:Arial, sans-serif;}
-    body {background:#f5f5f5; padding:15px; max-width:600px; margin:0 auto;}
+    body {background:#f5f5f5; padding:15px; max-width:650px; margin:0 auto;}
     .header {background:#0a2351; color:white; padding:18px; border-radius:8px; margin-bottom:20px; text-align:center;}
     .card {background:white; padding:18px; border-radius:8px; margin:15px 0; box-shadow:0 1px 4px #ccc;}
-    .btn {width:48%; padding:12px; border:none; border-radius:6px; font-weight:bold; font-size:16px; cursor:pointer;}
-    .btn-start {background:#ffc107; color:#000;}
-    .btn-save {background:#28a745; color:white;}
+    .btn {padding:12px; border:none; border-radius:6px; font-weight:bold; font-size:16px; cursor:pointer;}
+    .btn-start {background:#ffc107; color:#000; width:48%;}
+    .btn-save {background:#28a745; color:white; width:48%;}
+    .btn-login {background:#0d6efd; color:white; width:100%; margin-top:10px;}
     table {width:100%; margin-top:10px; border-collapse:collapse;}
     td {padding:8px 5px; font-size:14px; border-bottom:1px solid #eee;}
-    input, select {width:100%; padding:7px; border:1px solid #ddd; border-radius:4px; font-size:14px;}
+    input, select {width:100%; padding:9px; border:1px solid #ddd; border-radius:4px; font-size:14px;}
     .row {display:flex; gap:4%; margin:10px 0; flex-wrap:wrap;}
     .col {width:48%; margin-bottom:10px;}
     .col-3 {width:31%; margin-bottom:10px;}
     h3 {font-size:16px; color:#0a2351; margin-bottom:12px; padding-bottom:5px; border-bottom:1px solid #eee;}
+    #halamanForm {display:none;}
+    .info-user {color:#0a2351; font-weight:bold; margin-bottom:15px; font-size:15px;}
+    .info-kamar {background:#e7f0ff; padding:8px; border-radius:4px; margin:10px 0; font-size:14px;}
   </style>
 </head>
 <body>
+
+<!-- HALAMAN LOGIN -->
+<div id="halamanLogin">
+  <div class="header">
+    <h2>LOGIN - HOUSEKEEPING</h2>
+    <p>Masukkan akun Anda untuk melanjutkan</p>
+  </div>
+  <div class="card">
+    <div class="col">
+      <label>Username</label>
+      <input type="text" id="user" placeholder="Contoh: budi" required>
+    </div>
+    <div class="col">
+      <label>Password</label>
+      <input type="password" id="pass" placeholder="Masukkan kata sandi" required>
+    </div>
+    <button class="btn btn-login" onclick="login()">MASUK</button>
+    <p id="pesanLogin" style="margin-top:10px; color:red; text-align:center;"></p>
+  </div>
+</div>
+
+<!-- HALAMAN UTAMA SETELAH LOGIN -->
+<div id="halamanForm">
   <div class="header">
     <h2>ROOMBOY CONTROL SHEET</h2>
     <p>Date: <span id="tanggal"></span></p>
+    <p class="info-user">👤 Petugas: <span id="namaPetugas"></span> | ⏰ Shift: <span id="shiftOtomatis"></span></p>
+    <div class="info-kamar">📋 Daftar Kamar Hari Ini: <span id="daftarKamarTampil"></span></div>
   </div>
 
   <div class="card">
-    <h3>INFORMATION</h3>
+    <h3>INFORMASI KAMAR</h3>
     <div class="row">
-      <div class="col"><label>No</label><input type="number" id="noUrut" min="1"></div>
-      <div class="col"><label>No Of Room</label><input type="text" id="noKamar" required></div>
-      <div class="col"><label>Shift</label>
-        <select id="shift">
-          <option value="Morning">Morning</option>
-          <option value="Afternoon">Afternoon</option>
-          <option value="Night">Night</option>
+      <div class="col"><label>No Urut</label><input type="number" id="noUrut" min="1" placeholder="1,2,3..."></div>
+      <div class="col">
+        <label>No Of Room</label>
+        <select id="noKamar" required>
+          <option value="">-- Pilih Kamar yang Dikerjakan --</option>
         </select>
       </div>
-      <div class="col"><label>Floor / Section</label><input type="text" id="floorSection"></div>
+      <div class="col"><label>Floor / Section</label><input type="text" id="floorSection" placeholder="Lantai / Wing"></div>
     </div>
 
     <div class="row" style="margin-top:15px;">
       <div class="col">
-        <label class="label">FO Status</label>
+        <label>FO Status</label>
         <select id="foStatus">
           <option value="ED">ED - Expected Departure</option>
           <option value="EA">EA - Expected Arrival</option>
@@ -55,7 +82,7 @@
         </select>
       </div>
       <div class="col">
-        <label class="label">HK</label>
+        <label>HK</label>
         <select id="hkStatus">
           <option value="">-</option>
           <option value="HK">HK</option>
@@ -64,7 +91,7 @@
     </div>
 
     <p style="margin-top:15px;">
-      <label class="label">Room Status</label>
+      <label>Room Status</label>
       <select id="roomStatus">
         <option value="VC">VC - Vacant Clean</option>
         <option value="VD">VD - Vacant Dirty</option>
@@ -129,84 +156,173 @@
   </div>
 
   <div class="card">
-    <h3>OTHERS</h3>
-    <p><label>Remarks</label><input type="text" id="remarks" placeholder="Catatan..."></p>
-    <p style="margin-top:10px;"><label>Prepared By</label><input type="text" id="petugas" required></p>
+    <h3>REMARKS</h3>
+    <input type="text" id="remarks" placeholder="Tulis catatan jika ada kerusakan atau permintaan tamu...">
   </div>
+</div>
 
-  <script>
-    // GANTI DENGAN URL HASIL SEBARKAN DARI APPS SCRIPT
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwyBLZWBUEGNqCe0Mi74x3CK0xHdZ_EJZyqfLL6A_gI6NSjZoy2am0wsrUwhYNAymoq/exec";
+<script>
+// ==============================================
+// PENGATURAN
+// ==============================================
+// ✅ GANTI INI DENGAN URL TERBARU DARI GOOGLE APPS SCRIPT
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby_ISI_URL_BARU_KAMU_DISINI/exec";
 
-    document.getElementById("tanggal").textContent = new Date().toLocaleDateString("en-GB");
-    let timeIn = "";
+let namaSaya = "";
+let shiftSaya = "";
+let daftarKamarSaya = [];
+let timeIn = "";
 
-    function mulai() {
-      timeIn = new Date().toLocaleTimeString("en-GB");
-      document.getElementById("timeIn").textContent = timeIn;
+document.getElementById("tanggal").textContent = new Date().toLocaleDateString("en-GB");
+
+// ==============================================
+// FUNGSI LOGIN
+// ==============================================
+async function login() {
+  const user = document.getElementById("user").value.trim();
+  const pass = document.getElementById("pass").value.trim();
+  const pesan = document.getElementById("pesanLogin");
+
+  if (!user || !pass) return pesan.textContent = "⚠️ Isi username dan password!";
+
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ aksi:"login", user:user, pass:pass })
+    });
+    const hasil = await res.json();
+
+    if (hasil.status === "sukses") {
+      namaSaya = hasil.nama;
+      document.getElementById("namaPetugas").textContent = namaSaya;
+      pesan.textContent = "";
+      // Ambil pembagian kamar hari ini
+      await ambilPembagianKamar();
+    } else {
+      pesan.textContent = "❌ Username atau Password salah!";
     }
+  } catch (err) {
+    pesan.textContent = "❌ Tidak dapat terhubung ke server!";
+  }
+}
 
-    async function simpan() {
-      if (!timeIn) return alert("Click START CLEANING first!");
-      const timeOut = new Date().toLocaleTimeString("en-GB");
+// ==============================================
+// AMBIL KAMAR YANG DIBAGIKAN SUPERVISOR
+// ==============================================
+async function ambilPembagianKamar() {
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ aksi:"ambilKamar", namaPetugas: namaSaya })
+    });
+    const hasil = await res.json();
 
-      const data = {
-        shift: document.getElementById("shift").value,
-        floorSection: document.getElementById("floorSection").value,
-        noUrut: document.getElementById("noUrut").value,
-        noKamar: document.getElementById("noKamar").value,
-        foStatus: document.getElementById("foStatus").value,
-        hkStatus: document.getElementById("hkStatus").value,
-        roomStatus: document.getElementById("roomStatus").value,
-        timeIn: timeIn,
-        timeOut: timeOut,
-        sheetDblIn: document.getElementById("sheetDblIn").value,
-        sheetDblOut: document.getElementById("sheetDblOut").value,
-        sheetSglIn: document.getElementById("sheetSglIn").value,
-        sheetSglOut: document.getElementById("sheetSglOut").value,
-        duvetDblIn: document.getElementById("duvetDblIn").value,
-        duvetDblOut: document.getElementById("duvetDblOut").value,
-        duvetSglIn: document.getElementById("duvetSglIn").value,
-        duvetSglOut: document.getElementById("duvetSglOut").value,
-        bathTowelIn: document.getElementById("bathTowelIn").value,
-        bathTowelOut: document.getElementById("bathTowelOut").value,
-        handTowelIn: document.getElementById("handTowelIn").value,
-        handTowelOut: document.getElementById("handTowelOut").value,
-        bathMatIn: document.getElementById("bathMatIn").value,
-        bathMatOut: document.getElementById("bathMatOut").value,
-        pillowIn: document.getElementById("pillowIn").value,
-        pillowOut: document.getElementById("pillowOut").value,
-        tissue: document.getElementById("tissue").value,
-        shampoo: document.getElementById("shampoo").value,
-        showerCap: document.getElementById("showerCap").value,
-        toothbrush: document.getElementById("toothbrush").value,
-        soap: document.getElementById("soap").value,
-        gel: document.getElementById("gel").value,
-        laundryBag: document.getElementById("laundryBag").value,
-        laundryList: document.getElementById("laundryList").value,
-        sewingKit: document.getElementById("sewingKit").value,
-        pen: document.getElementById("pen").value,
-        plastic: document.getElementById("plastic").value,
-        shoeMitten: document.getElementById("shoeMitten").value,
-        coffee: document.getElementById("coffee").value,
-        sugar: document.getElementById("sugar").value,
-        tea: document.getElementById("tea").value,
-        creamer: document.getElementById("creamer").value,
-        remarks: document.getElementById("remarks").value,
-        petugas: document.getElementById("petugas").value
-      };
+    if (hasil.status === "ada") {
+      shiftSaya = hasil.shift;
+      daftarKamarSaya = hasil.kamar;
 
-      try {
-        const res = await fetch(APPS_SCRIPT_URL, {
-          method: "POST",
-          body: JSON.stringify(data)
-        });
-        if (res.ok) alert("✅ Data saved successfully!");
-        else alert("❌ Failed to save data");
-      } catch (err) {
-        alert("❌ Error: " + err.message);
-      }
+      // Tampilkan info
+      document.getElementById("shiftOtomatis").textContent = shiftSaya;
+      document.getElementById("daftarKamarTampil").textContent = daftarKamarSaya.join(", ");
+
+      // Masukkan ke pilihan kamar
+      const pilihKamar = document.getElementById("noKamar");
+      pilihKamar.innerHTML = `<option value="">-- Pilih Kamar --</option>`;
+      daftarKamarSaya.forEach(k => {
+        const opt = document.createElement("option");
+        opt.value = k;
+        opt.textContent = k;
+        pilihKamar.appendChild(opt);
+      });
+
+      // Tampilkan halaman utama
+      document.getElementById("halamanLogin").style.display = "none";
+      document.getElementById("halamanForm").style.display = "block";
+
+    } else {
+      alert("ℹ️ " + hasil.pesan);
     }
-  </script>
+  } catch (err) {
+    alert("❌ Gagal memuat daftar kamar: " + err.message);
+  }
+}
+
+// ==============================================
+// MULAI & SELESAI
+// ==============================================
+function mulai() {
+  timeIn = new Date().toLocaleTimeString("en-GB");
+  document.getElementById("timeIn").textContent = timeIn;
+}
+
+async function simpan() {
+  if (!timeIn) return alert("⚠️ Tekan tombol START CLEANING terlebih dahulu!");
+  const timeOut = new Date().toLocaleTimeString("en-GB");
+
+  const data = {
+    aksi: "simpan",
+    namaPetugas: namaSaya,
+    shift: shiftSaya,
+    floorSection: document.getElementById("floorSection").value,
+    noUrut: document.getElementById("noUrut").value,
+    noKamar: document.getElementById("noKamar").value,
+    foStatus: document.getElementById("foStatus").value,
+    hkStatus: document.getElementById("hkStatus").value,
+    roomStatus: document.getElementById("roomStatus").value,
+    timeIn: timeIn,
+    timeOut: timeOut,
+    sheetDblIn: document.getElementById("sheetDblIn").value,
+    sheetDblOut: document.getElementById("sheetDblOut").value,
+    sheetSglIn: document.getElementById("sheetSglIn").value,
+    sheetSglOut: document.getElementById("sheetSglOut").value,
+    duvetDblIn: document.getElementById("duvetDblIn").value,
+    duvetDblOut: document.getElementById("duvetDblOut").value,
+    duvetSglIn: document.getElementById("duvetSglIn").value,
+    duvetSglOut: document.getElementById("duvetSglOut").value,
+    bathTowelIn: document.getElementById("bathTowelIn").value,
+    bathTowelOut: document.getElementById("bathTowelOut").value,
+    handTowelIn: document.getElementById("handTowelIn").value,
+    handTowelOut: document.getElementById("handTowelOut").value,
+    bathMatIn: document.getElementById("bathMatIn").value,
+    bathMatOut: document.getElementById("bathMatOut").value,
+    pillowIn: document.getElementById("pillowIn").value,
+    pillowOut: document.getElementById("pillowOut").value,
+    tissue: document.getElementById("tissue").value,
+    shampoo: document.getElementById("shampoo").value,
+    showerCap: document.getElementById("showerCap").value,
+    toothbrush: document.getElementById("toothbrush").value,
+    soap: document.getElementById("soap").value,
+    gel: document.getElementById("gel").value,
+    laundryBag: document.getElementById("laundryBag").value,
+    laundryList: document.getElementById("laundryList").value,
+    sewingKit: document.getElementById("sewingKit").value,
+    pen: document.getElementById("pen").value,
+    plastic: document.getElementById("plastic").value,
+    shoeMitten: document.getElementById("shoeMitten").value,
+    coffee: document.getElementById("coffee").value,
+    sugar: document.getElementById("sugar").value,
+    tea: document.getElementById("tea").value,
+    creamer: document.getElementById("creamer").value,
+    remarks: document.getElementById("remarks").value
+  };
+
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify(data)
+    });
+    const hasil = await res.json();
+    if (hasil.status === "tersimpan") {
+      alert("✅ Data berhasil disimpan!");
+      // Reset form untuk kamar berikutnya
+      location.reload();
+    } else {
+      alert("❌ Gagal menyimpan data!");
+    }
+  } catch (err) {
+    alert("❌ Kesalahan: " + err.message);
+  }
+}
+</script>
 </body>
 </html>
