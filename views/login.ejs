@@ -3,34 +3,71 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login Sistem Laporan</title>
-  <style>
-    * { margin:0; padding:0; box-sizing:border-box; font-family:Arial; }
-    body { background:#f0f4f8; display:flex; align-items:center; justify-content:center; min-height:100vh; }
-    .card { background:#fff; padding:30px; border-radius:12px; width:100%; max-width:400px; box-shadow:0 2px 10px rgba(0,0,0,0.1); }
-    h2 { text-align:center; margin-bottom:20px; color:#2c3e50; }
-    .form-group { margin-bottom:15px; }
-    label { display:block; margin-bottom:5px; }
-    input { width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; }
-    button { width:100%; padding:12px; background:#27ae60; border:none; color:white; font-weight:bold; border-radius:6px; cursor:pointer; }
-    .pesan { padding:10px; margin-bottom:15px; border-radius:6px; background:#f8d7da; color:#721c24; text-align:center; }
-  </style>
+  <title>Login - Sistem Laporan Housekeeping</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            hotel: {
+              dark: '#0F2B48',
+              primary: '#2D5B7C',
+              light: '#E8F0F5',
+              accent: '#F2994A',
+              success: '#27AE60',
+              danger: '#E74C3C',
+              neutral: '#F8FAFC'
+            }
+          },
+          fontFamily: {
+            sans: ['Segoe UI', 'Roboto', 'Arial', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
 </head>
-<body>
-  <div class="card">
-    <h2>🔐 Masuk Sistem</h2>
-    <% if (pesan) { %><div class="pesan"><%= pesan %></div><% } %>
-    <form method="POST" action="/login">
-      <div class="form-group">
-        <label>Username</label>
-        <input type="text" name="username" required>
+<body class="bg-hotel-neutral min-h-screen flex items-center justify-center p-4">
+  <div class="w-full max-w-md">
+    <!-- Kartu Login -->
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+      <div class="bg-hotel-dark text-white p-6 text-center">
+        <i class="fa fa-hotel text-4xl mb-2"></i>
+        <h1 class="text-xl font-bold">Sistem Laporan Housekeeping</h1>
+        <p class="text-sm opacity-90 mt-1">Masuk ke sistem</p>
       </div>
-      <div class="form-group">
-        <label>Sandi</label>
-        <input type="password" name="sandi" required>
+
+      <div class="p-6">
+        <% if (pesan) { %>
+        <div class="mb-4 p-3 rounded bg-red-50 border border-red-200 text-red-700 text-sm text-center">
+          <%= pesan %>
+        </div>
+        <% } %>
+
+        <form method="POST" action="/login" class="space-y-4">
+          <div>
+            <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+            <input type="text" id="username" name="username" required
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-hotel-primary focus:border-hotel-primary">
+          </div>
+
+          <div>
+            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Kata Sandi</label>
+            <input type="password" id="password" name="password" required
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-hotel-primary focus:border-hotel-primary">
+          </div>
+
+          <button type="submit"
+            class="w-full bg-hotel-primary hover:bg-hotel-dark text-white font-medium py-2 px-4 rounded-md transition duration-200">
+            Masuk ke Sistem
+          </button>
+        </form>
       </div>
-      <button type="submit">Masuk</button>
-    </form>
+    </div>
+
+    <p class="text-center text-xs text-gray-500 mt-4">© 2026 Sistem Housekeeping Hotel</p>
   </div>
 </body>
 </html>
