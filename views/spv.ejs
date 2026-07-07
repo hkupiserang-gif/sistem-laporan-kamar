@@ -50,101 +50,89 @@
       </div>
       <% } %>
 
-      <form method="POST" action="/tambah-tugas-banyak" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mb-5">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
-          <input type="date" name="tanggal" value="<%= new Date().toISOString().split('T')[0] %>" required class="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:ring-1 focus:ring-hotel-primary">
+      <form method="POST" action="/tambah-tugas-banyak" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
+            <input type="date" name="tanggal" value="<%= new Date().toISOString().split('T')[0] %>" required class="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:ring-1 focus:ring-hotel-primary">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Pilih Roomboy</label>
+            <select name="petugas" required class="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:ring-1 focus:ring-hotel-primary">
+              <option value="">-- Pilih Nama --</option>
+              <option value="Aslan">Aslan</option>
+              <option value="Bila">Bila</option>
+              <option value="Fika">Fika</option>
+              <option value="Indah">Indah</option>
+              <option value="Apri">Apri</option>
+              <option value="Revan">Revan</option>
+              <option value="Alwi">Alwi</option>
+              <option value="Ajril">Ajril</option>
+            </select>
+          </div>
+
+          <div>
+            <button type="submit" class="w-full bg-hotel-primary hover:bg-hotel-dark text-white font-medium py-2 rounded">
+              <i class="fa fa-check-circle mr-1"></i> Berikan Tugas ke Kamar Terpilih
+            </button>
+          </div>
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Pilih Roomboy</label>
-          <select name="petugas" required class="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:ring-1 focus:ring-hotel-primary">
-            <option value="">-- Pilih Nama --</option>
-            <option value="Aslan">Aslan</option>
-            <option value="Bila">Bila</option>
-            <option value="Fika">Fika</option>
-            <option value="Indah">Indah</option>
-            <option value="Apri">Apri</option>
-            <option value="Revan">Revan</option>
-            <option value="Alwi">Alwi</option>
-            <option value="Ajril">Ajril</option>
-          </select>
+        <!-- Tombol Pilih Semua / Batal -->
+        <div class="mb-3">
+          <button type="button" onclick="pilihSemua()" class="text-sm text-hotel-primary hover:underline mr-4">✓ Pilih Semua Kamar</button>
+          <button type="button" onclick="batalPilih()" class="text-sm text-gray-600 hover:underline">✗ Batalkan Pilihan</button>
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Status Awal Kamar</label>
-          <select name="status_awal" required class="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:ring-1 focus:ring-hotel-primary">
-            <option value="VC">VC - Bersih & Kosong</option>
-            <option value="VD">VD - Kotor & Kosong</option>
-            <option value="OC">OC - Bersih & Terisi</option>
-            <option value="OD">OD - Kotor & Terisi</option>
-          </select>
-        </div>
-
-        <div>
-          <button type="submit" class="w-full bg-hotel-primary hover:bg-hotel-dark text-white font-medium py-2 rounded">
-            <i class="fa fa-check-circle mr-1"></i> Berikan Tugas ke Kamar Terpilih
-          </button>
+        <!-- Tabel Daftar Semua Kamar -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm border-collapse">
+            <thead>
+              <tr class="bg-hotel-light">
+                <th class="border border-gray-200 p-2 text-center w-12">Pilih</th>
+                <th class="border border-gray-200 p-2 text-left">Nomor Kamar</th>
+                <th class="border border-gray-200 p-2 text-left">Lantai</th>
+                <th class="border border-gray-200 p-2 text-left">Tipe Kamar</th>
+                <th class="border border-gray-200 p-2 text-left">Status Awal</th>
+                <th class="border border-gray-200 p-2 text-left">Diberikan Kepada</th>
+                <th class="border border-gray-200 p-2 text-center">Selesai</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% daftarKamar.forEach(kamar => { %>
+              <tr class="hover:bg-gray-50">
+                <td class="border border-gray-200 p-2 text-center">
+                  <input type="checkbox" name="kamar[]" value="<%= kamar.nomor %>" class="w-4 h-4 text-hotel-primary border-gray-300 rounded">
+                </td>
+                <td class="border border-gray-200 p-2 font-medium"><%= kamar.nomor %></td>
+                <td class="border border-gray-200 p-2"><%= kamar.lantai %></td>
+                <td class="border border-gray-200 p-2"><%= kamar.tipe_kamar %></td>
+                <td class="border border-gray-200 p-2">
+                  <select name="status_awal_<%= kamar.nomor %>" class="w-full border border-gray-200 rounded p-1 text-xs">
+                    <option value="VC" <%= kamar.status === 'VC' ? 'selected' : '' %>>VC - Bersih & Kosong</option>
+                    <option value="VCU" <%= kamar.status === 'VCU' ? 'selected' : '' %>>VCU - Vacant Clean Uncheck</option>
+                    <option value="VD" <%= kamar.status === 'VD' ? 'selected' : '' %>>VD - Kotor & Kosong</option>
+                    <option value="OC" <%= kamar.status === 'OC' ? 'selected' : '' %>>OC - Bersih & Terisi</option>
+                    <option value="OD" <%= kamar.status === 'OD' ? 'selected' : '' %>>OD - Kotor & Terisi</option>
+                  </select>
+                </td>
+                <td class="border border-gray-200 p-2"><%= kamar.petugas || '-' %></td>
+                <td class="border border-gray-200 p-2 text-center">
+                  <% if(kamar.selesai) { %>
+                    <i class="fa fa-check-circle text-green-600" title="Selesai"></i>
+                  <% } else if(kamar.petugas) { %>
+                    <i class="fa fa-clock-o text-orange-500" title="Dalam Proses"></i>
+                  <% } else { %>
+                    -
+                  <% } %>
+                </td>
+              </tr>
+              <% }) %>
+            </tbody>
+          </table>
         </div>
       </form>
-
-      <!-- Tombol Pilih Semua / Batal -->
-      <div class="mb-3">
-        <button type="button" onclick="pilihSemua()" class="text-sm text-hotel-primary hover:underline mr-4">✓ Pilih Semua Kamar</button>
-        <button type="button" onclick="batalPilih()" class="text-sm text-gray-600 hover:underline">✗ Batalkan Pilihan</button>
-      </div>
-
-      <!-- Tabel Daftar Semua Kamar -->
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm border-collapse">
-          <thead>
-            <tr class="bg-hotel-light">
-              <th class="border border-gray-200 p-2 text-center w-12">Pilih</th>
-              <th class="border border-gray-200 p-2 text-left">Nomor Kamar</th>
-              <th class="border border-gray-200 p-2 text-left">Lantai</th>
-              <th class="border border-gray-200 p-2 text-left">Tipe Kamar</th>
-              <th class="border border-gray-200 p-2 text-left">Status Hari Ini</th>
-              <th class="border border-gray-200 p-2 text-left">Diberikan Kepada</th>
-              <th class="border border-gray-200 p-2 text-center">Selesai</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% daftarKamar.forEach(kamar => { %>
-            <tr class="hover:bg-gray-50">
-              <td class="border border-gray-200 p-2 text-center">
-                <input type="checkbox" name="kamar[]" value="<%= kamar.nomor %>" class="w-4 h-4 text-hotel-primary border-gray-300 rounded">
-              </td>
-              <td class="border border-gray-200 p-2 font-medium"><%= kamar.nomor %></td>
-              <td class="border border-gray-200 p-2"><%= kamar.lantai %></td>
-              <td class="border border-gray-200 p-2"><%= kamar.tipe_kamar %></td>
-              <td class="border border-gray-200 p-2">
-                <% if(kamar.status === 'VC') { %>
-                  <span class="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs">Bersih & Kosong</span>
-                <% } else if(kamar.status === 'VD') { %>
-                  <span class="bg-orange-100 text-orange-800 px-2 py-0.5 rounded text-xs">Kotor & Kosong</span>
-                <% } else if(kamar.status === 'OC') { %>
-                  <span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">Bersih & Terisi</span>
-                <% } else if(kamar.status === 'OD') { %>
-                  <span class="bg-red-100 text-red-800 px-2 py-0.5 rounded text-xs">Kotor & Terisi</span>
-                <% } else { %>
-                  <span class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs">Belum Ada Tugas</span>
-                <% } %>
-              </td>
-              <td class="border border-gray-200 p-2"><%= kamar.petugas || '-' %></td>
-              <td class="border border-gray-200 p-2 text-center">
-                <% if(kamar.selesai) { %>
-                  <i class="fa fa-check-circle text-green-600"></i>
-                <% } else if(kamar.petugas) { %>
-                  <i class="fa fa-clock-o text-orange-500"></i>
-                <% } else { %>
-                  -
-                <% } %>
-              </td>
-            </tr>
-            <% }) %>
-          </tbody>
-        </table>
-      </div>
     </div>
   </div>
 
