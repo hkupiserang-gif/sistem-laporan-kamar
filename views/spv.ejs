@@ -92,7 +92,7 @@
 
         <!-- Keterangan Status -->
         <div class="mb-3 text-xs text-gray-600">
-          <span class="font-medium">Keterangan Status:</span>
+          <span class="font-medium">Status Kamar:</span>
           <span class="bg-green-100 px-2 rounded mx-1">VC</span> Bersih & Kosong |
           <span class="bg-blue-100 px-2 rounded mx-1">VCU</span> Vacant Clean Uncheck |
           <span class="bg-orange-100 px-2 rounded mx-1">VD</span> Kotor & Kosong |
@@ -117,7 +117,7 @@
                 <th class="border border-gray-200 p-2 text-left">Tipe Kamar</th>
                 <th class="border border-gray-200 p-2 text-center">Status Awal</th>
                 <th class="border border-gray-200 p-2 text-left">Diberikan Kepada</th>
-                <th class="border border-gray-200 p-2 text-center">Selesai</th>
+                <th class="border border-gray-200 p-2 text-center">Status Pengerjaan</th>
               </tr>
             </thead>
             <tbody>
@@ -153,14 +153,16 @@
                     </div>
                   </div>
                 </td>
-                <td class="border border-gray-200 p-2"><%= kamar.petugas || '-' %></td>
-                <td class="border border-gray-200 p-2 text-center">
-                  <% if(kamar.selesai) { %>
-                    <i class="fa fa-check-circle text-green-600" title="Selesai"></i>
-                  <% } else if(kamar.petugas) { %>
-                    <i class="fa fa-clock-o text-orange-500" title="Dalam Proses"></i>
+                <td class="border border-gray-200 p-2"><%= kamar.petugas %></td>
+                <td class="border border-gray-200 p-2 text-center font-medium">
+                  <% if (kamar.statusProses === '✅ Selesai') { %>
+                    <span class="text-green-600"><%= kamar.statusProses %></span>
+                  <% } else if (kamar.statusProses === '⏳ Sedang Dikerjakan') { %>
+                    <span class="text-orange-500"><%= kamar.statusProses %></span>
+                  <% } else if (kamar.statusProses === '📝 Belum Dimulai') { %>
+                    <span class="text-blue-500"><%= kamar.statusProses %></span>
                   <% } else { %>
-                    -
+                    <span class="text-gray-500"><%= kamar.statusProses %></span>
                   <% } %>
                 </td>
               </tr>
