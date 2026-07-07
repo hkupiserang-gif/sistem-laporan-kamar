@@ -240,6 +240,29 @@ app.get('/unduh', async (req, res) => {
   }
 });
 
+// Simpan tugas untuk banyak kamar sekaligus
+app.post('/tambah-tugas-banyak', async (req, res) => {
+  if (!req.session.user || req.session.user.peran !== 'SPV') return res.redirect('/');
+  try {
+    const { tanggal, petugas, ...statusKamar } = req.body;
+    const daftarKamar = Array.isArray(req.body.kamar) ? req.body.kamar : [req.body.kamar];
+
+    for (const nomorKamar of daftarKamar) {
+      const status = statusKamar[`status_awal_${nomorKamar}`] || 'VCU';
+      await pool.query(`
+        INSERT INTO tugas (tanggal, kamar, petugas, status_awal, selesai)
+        VALUES ($1, $2, $3, $4, false)
+        ON CONFLICT (tanggal, kamar) DO UPDATE SET petugas = $3, status_awal = $4, selesai = false
+      `, [tanggal, nomorKamar, petugas, status]);
+    }
+
+    res.redirect('/spv?pesan=berhasil');
+  } catch (err) {
+    console.error(err);
+    res.redirect('/spv?pesan=gagal');
+  }
+});
+
 // ================= RUTE LOGOUT =================
 app.get('/logout', (req, res) => {
   req.session.destroy();
