@@ -6,248 +6,101 @@
   <title>Panel Supervisor - Horison Hotel</title>
   <style>
     * {margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', Arial, sans-serif;}
-    body {background-color: #f8fafc;}
-
-    /* Header Utama */
-    .header {
-      background-color: #004b97;
-      color: white;
-      padding: 12px 24px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
+    body {background-color: #f5f7fa;}
+    .header {background: #004b97; color: white; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
     .header h2 {font-size: 18px; font-weight: 600;}
-    .header a {color: white; text-decoration: none; margin-left: 8px;}
-    .header a:hover {text-decoration: underline;}
-
-    /* Logo */
-    .logo-container {
-      text-align: center;
-      margin: 20px 0;
-    }
-    .logo {
-      font-size: 32px;
-      font-weight: bold;
-      color: #002b5c;
-      letter-spacing: 1px;
-    }
-    .sub-logo {
-      font-size: 14px;
-      color: #555;
-      margin-top: 4px;
-    }
-
-    .container {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 0 16px 30px;
-    }
-
-    .pesan {
-      padding: 10px;
-      border-radius: 4px;
-      margin-bottom: 16px;
-      font-size: 14px;
-      text-align: center;
-    }
-    .pesan.error {background:#ffe9e9; color:#b02020; border:1px solid #f8cccc;}
-    .pesan.sukses {background:#e6f9ed; color:#157c38; border:1px solid #c8f0d6;}
-
-    .card {
-      background: white;
-      border-radius: 6px;
-      padding: 20px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      margin-bottom: 24px;
-    }
-    .card h3 {
-      font-size: 16px;
-      color: #222;
-      margin-bottom: 16px;
-      font-weight: 600;
-    }
-
-    .form-header {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      align-items: center;
-      margin-bottom: 20px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid #eee;
-    }
-    .form-header label {
-      font-size: 14px;
-      color: #444;
-      margin-right: 4px;
-    }
-    .form-header input, .form-header select {
-      padding: 7px 9px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 14px;
-    }
-    button {
-      padding: 9px 16px;
-      background-color: #004b97;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #003a78;
-    }
-
-    /* Tampilan daftar kamar ke bawah */
-    .kamar-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 12px;
-    }
-    .kamar-item {
-      border: 1px solid #e2e8f0;
-      border-radius: 6px;
-      padding: 12px;
-      background: #fdfdfd;
-    }
-    .kamar-header {
-      font-weight: bold;
-      font-size: 15px;
-      color: #002b5c;
-      margin-bottom: 8px;
-    }
-    .kamar-info {
-      font-size: 13px;
-      color: #666;
-      margin-bottom: 10px;
-    }
-    .status-pilihan {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .status-pilihan label {
-      font-size: 13px;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      cursor: pointer;
-      padding: 4px 6px;
-      border-radius: 3px;
-      background: #f0f4f8;
-    }
-    input[type="checkbox"] {
-      cursor: pointer;
-    }
-
-    /* Tabel tugas */
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 12px;
-      font-size: 14px;
-    }
-    th, td {
-      padding: 10px 12px;
-      text-align: left;
-      border-bottom: 1px solid #eee;
-    }
-    th {
-      background-color: #f5f7fa;
-      font-weight: 600;
-      color: #444;
-    }
-    .text-center {
-      text-align: center;
-      padding: 24px;
-      color: #777;
-    }
+    .header a {color: white; text-decoration: none;}
+    .container {max-width: 1200px; margin: 24px auto; padding: 0 16px;}
+    .logo {text-align: center; margin-bottom: 24px;}
+    .logo h1 {font-size: 36px; color: #002b5c; letter-spacing: 1px;}
+    .logo p {font-size: 14px; color: #666; margin-top: 4px;}
+    .card {background: white; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 24px;}
+    .card h3 {font-size: 16px; color: #222; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #eee;}
+    .form-bar {display: flex; gap: 12px; align-items: center; margin-bottom: 20px; flex-wrap: wrap;}
+    .form-bar label {font-weight: 500; color: #333;}
+    .form-bar input, .form-bar select {padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;}
+    .btn-simpan {background: #0066cc; color: white; border: none; padding: 7px 16px; border-radius: 4px; cursor: pointer; font-weight: 500;}
+    .btn-simpan:hover {background: #0055aa;}
+    .kamar-grid {display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px;}
+    .kamar-card {border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px;}
+    .kamar-card.dipakai {opacity: 0.6; background: #f8fafc; border-color: #cbd5e1;}
+    .kamar-nomor {font-weight: bold; font-size: 15px; margin-bottom: 4px;}
+    .kamar-info {font-size: 12px; color: #555; margin-bottom: 8px;}
+    .opsi-status {display: flex; flex-direction: column; gap: 4px; font-size: 12px;}
+    .pesan {padding: 10px; border-radius: 4px; margin-bottom: 16px; text-align: center; font-size: 14px;}
+    .pesan.sukses {background: #e6f9ed; color: #157c38; border: 1px solid #c8f0d6;}
+    .pesan.error {background: #ffe9e9; color: #b02020; border: 1px solid #f8cccc;}
+    table {width: 100%; border-collapse: collapse; font-size: 13px;}
+    th, td {padding: 10px; text-align: left; border-bottom: 1px solid #eee;}
+    th {background: #f8fafc; font-weight: 600; color: #333;}
+    .sudah {color: #157c38; font-weight: 500;}
+    .belum {color: #b45309; font-weight: 500;}
   </style>
 </head>
 <body>
 
-  <!-- Header Atas -->
   <div class="header">
     <h2>Panel Supervisor</h2>
-    <div>
-      Halo, <%= user.nama %> | <a href="/logout">Keluar</a>
-    </div>
+    <div>Halo, <%= user.nama %> | <a href="/logout">Keluar</a></div>
   </div>
 
   <div class="container">
-    <!-- Logo Hotel -->
-    <div class="logo-container">
-      <div class="logo">HORISON</div>
-      <div class="sub-logo">TC-UPI SERANG • HOTEL & CONVENTION</div>
+    <div class="logo">
+      <h1>HORISON</h1>
+      <p>TC-UPI SERANG • HOTEL & CONVENTION</p>
     </div>
 
-    <!-- Pesan Notifikasi -->
     <% if (pesan) { %>
       <div class="pesan <%= pesan.tipe %>"><%= pesan.teks %></div>
     <% } %>
 
-    <!-- Form Buat Tugas -->
     <div class="card">
       <h3>Buat Tugas Kebersihan</h3>
-      <form action="/tambah-tugas" method="POST" id="formTugas">
-        <div class="form-header">
-          <div>
-            <label>Tanggal:</label>
-            <input type="date" name="tanggal" value="<%= tanggal %>" required>
-          </div>
-          <div>
-            <label>Petugas:</label>
-            <select name="petugas" required>
-              <option value="">-- Pilih Petugas --</option>
-              <% daftarRA.forEach(ra => { %>
-                <option value="<%= ra.nama %>"><%= ra.nama %></option>
-              <% }) %>
-            </select>
-          </div>
-          <button type="submit">Simpan Tugas Terpilih</button>
+      <form action="/tambah-tugas" method="POST">
+        <div class="form-bar">
+          <label>Tanggal:</label>
+          <input type="date" name="tanggal" value="<%= tanggal %>" required>
+
+          <label>Petugas:</label>
+          <select name="petugas" required>
+            <option value="">-- Pilih Petugas --</option>
+            <% daftarRA.forEach(ra => { %>
+              <option value="<%= ra.nama %>"><%= ra.nama %></option>
+            <% }) %>
+          </select>
+
+          <button type="submit" class="btn-simpan">Simpan Tugas Terpilih</button>
         </div>
 
-        <!-- Daftar Kamar ke bawah dengan pilihan status -->
         <div class="kamar-grid">
-          <% daftarKamar.forEach(k => { %>
-            <div class="kamar-item">
-              <div class="kamar-header"><%= k.nomor_kamar %></div>
-              <div class="kamar-info"><%= k.lantai %> • <%= k.tipe_kamar %></div>
-              <div class="status-pilihan">
-                <label>
-                  <input type="checkbox" name="kamar[]" value="<%= k.nomor_kamar %>">
-                  Pilih
-                </label>
-                <label>
-                  <input type="radio" name="status_<%= k.nomor_kamar %>" value="VD" checked> VD
-                </label>
-                <label>
-                  <input type="radio" name="status_<%= k.nomor_kamar %>" value="VC"> VC
-                </label>
-                <label>
-                  <input type="radio" name="status_<%= k.nomor_kamar %>" value="VCU"> VCU
-                </label>
-                <label>
-                  <input type="radio" name="status_<%= k.nomor_kamar %>" value="OC"> OC
-                </label>
-                <label>
-                  <input type="radio" name="status_<%= k.nomor_kamar %>" value="OD"> OD
-                </label>
-              </div>
+          <% daftarKamar.forEach(k => {
+            const sudah = kamarSudahAda.includes(k.nomor_kamar);
+          %>
+          <div class="kamar-card <%= sudah ? 'dipakai' : '' %>">
+            <div class="kamar-nomor"><%= k.nomor_kamar %></div>
+            <div class="kamar-info"><%= k.lantai %> • <%= k.tipe_kamar %></div>
+            <div class="opsi-status">
+              <label>
+                <input type="checkbox" name="kamar" value="<%= k.nomor_kamar %>" <%= sudah ? 'disabled' : '' %>>
+                <%= sudah ? 'Sudah Dibagikan' : 'Pilih' %>
+              </label>
+              <label><input type="radio" name="status_<%= k.nomor_kamar %>" value="VD" checked <%= sudah ? 'disabled' : '' %>> VD</label>
+              <label><input type="radio" name="status_<%= k.nomor_kamar %>" value="VC" <%= sudah ? 'disabled' : '' %>> VC</label>
+              <label><input type="radio" name="status_<%= k.nomor_kamar %>" value="VCU" <%= sudah ? 'disabled' : '' %>> VCU</label>
+              <label><input type="radio" name="status_<%= k.nomor_kamar %>" value="OC" <%= sudah ? 'disabled' : '' %>> OC</label>
+              <label><input type="radio" name="status_<%= k.nomor_kamar %>" value="OD" <%= sudah ? 'disabled' : '' %>> OD</label>
             </div>
+          </div>
           <% }) %>
         </div>
       </form>
     </div>
 
-    <!-- Daftar Tugas -->
     <div class="card">
       <h3>Daftar Tugas Hari Ini (<%= tanggal %>)</h3>
+      <% if (daftarTugas.length === 0) { %>
+        <p style="text-align:center; padding:20px; color:#777;">Belum ada tugas yang dibuat hari ini</p>
+      <% } else { %>
       <table>
         <thead>
           <tr>
@@ -259,35 +112,22 @@
           </tr>
         </thead>
         <tbody>
-          <% if (daftarTugas.length > 0) { %>
-            <% daftarTugas.forEach(t => { %>
-              <tr>
-                <td><strong><%= t.kamar %></strong></td>
-                <td><%= t.lantai || '-' %></td>
-                <td><%= t.petugas %></td>
-                <td><%= t.status_awal %></td>
-                <td><%= t.selesai ? '✅ Sudah' : '⏳ Belum' %></td>
-              </tr>
-            <% }) %>
-          <% } else { %>
-            <tr><td colspan="5" class="text-center">Belum ada tugas dibuat hari ini</td></tr>
-          <% } %>
+          <% daftarTugas.forEach(t => { %>
+          <tr>
+            <td><%= t.kamar %></td>
+            <td><%= t.lantai %></td>
+            <td><%= t.petugas %></td>
+            <td><%= t.status_awal %></td>
+            <td class="<%= t.selesai ? 'sudah' : 'belum' %>">
+              <%= t.selesai ? '✅ Sudah' : '⌛ Belum' %>
+            </td>
+          </tr>
+          <% }) %>
         </tbody>
       </table>
+      <% } %>
     </div>
   </div>
-
-  <!-- Validasi sebelum kirim -->
-  <script>
-    document.getElementById('formTugas').addEventListener('submit', function(e) {
-      const dipilih = document.querySelectorAll('input[name="kamar[]"]:checked');
-      if (dipilih.length === 0) {
-        e.preventDefault();
-        alert('Pilih minimal satu kamar terlebih dahulu!');
-        return false;
-      }
-    });
-  </script>
 
 </body>
 </html>
