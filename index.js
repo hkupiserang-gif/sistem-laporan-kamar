@@ -12,9 +12,9 @@ const db = new sqlite3.Database('./database.db', (err) => {
   else console.log("✅ Terhubung ke database SQLite");
 });
 
-// Buat tabel & masukkan data awal jika belum ada
+// Buat tabel & masukkan data lengkap sesuai data kamu
 db.serialize(() => {
-  // Tabel pengguna
+  // Tabel Pengguna
   db.run(`CREATE TABLE IF NOT EXISTS pengguna (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nama TEXT NOT NULL,
@@ -24,45 +24,116 @@ db.serialize(() => {
     aktif BOOLEAN DEFAULT 1
   )`);
 
-  // Masukkan akun default jika belum ada
-  db.get(`SELECT * FROM pengguna WHERE username = 'spv'`, (err, row) => {
+  // Masukkan data staf lengkap
+  db.get(`SELECT * FROM pengguna WHERE username = 'nizar'`, (err, row) => {
     if (!row) {
       db.run(`INSERT INTO pengguna (nama, username, password, peran) VALUES 
-        ('Supervisor', 'spv', 'spv123', 'SPV'),
-        ('Room Attendant 1', 'ra1', 'ra123', 'RA'),
-        ('Room Attendant 2', 'ra2', 'ra123', 'RA'),
-        ('Alwi', 'alwi', 'alwi123', 'RA'),
-        ('Order Taker', 'ot', 'ot123', 'OT')`);
-      console.log("✅ Akun pengguna default berhasil dibuat");
+        ('Aslan', 'aslan', '123', 'RA'),
+        ('Bila', 'bila', '123', 'RA'),
+        ('Indah', 'indah', '123', 'RA'),
+        ('Fika', 'fika', '123', 'RA'),
+        ('Azril', 'azril', '123', 'RA'),
+        ('Alwi', 'alwi', '123', 'RA'),
+        ('Revan', 'revan', '123', 'RA'),
+        ('Apri', 'apri', '123', 'RA'),
+        ('Nizar', 'nizar', '123', 'SPV'),
+        ('Kinan', 'kinan', '123', 'SPV'),
+        ('Ilhan', 'ilhan', '123', 'SPV'),
+        ('Alisa', 'alisa', '1234', 'OT')`);
+      console.log("✅ Data staf berhasil diperbarui");
     }
   });
 
-  // Tabel kamar
+  // Tabel Kamar
   db.run(`CREATE TABLE IF NOT EXISTS kamar (
     nomor_kamar TEXT PRIMARY KEY,
-    lantai INTEGER,
-    tipe_kamar TEXT,
+    lantai TEXT NOT NULL,
+    tipe_kamar TEXT NOT NULL,
     aktif BOOLEAN DEFAULT 1
   )`);
 
-  // Masukkan data kamar jika belum ada
-  db.get(`SELECT * FROM kamar WHERE nomor_kamar = '312'`, (err, row) => {
+  // Masukkan data kamar lengkap sesuai daftar kamu
+  db.get(`SELECT * FROM kamar WHERE nomor_kamar = '201'`, (err, row) => {
     if (!row) {
-      db.run(`INSERT INTO kamar (nomor_kamar, lantai, tipe_kamar) VALUES 
-        ('312', 3, 'Twin'),
-        ('313', 3, 'King'),
-        ('314', 3, 'Twin'),
-        ('201', 2, 'Twin'),
-        ('202', 2, 'King'),
-        ('203', 2, 'Twin'),
-        ('204', 2, 'King'),
-        ('205', 2, 'Twin'),
-        ('206', 2, 'King')`);
-      console.log("✅ Data kamar berhasil dibuat");
+      const kamarList = [
+        ['201', 'Lantai 2C', 'Deluxe'],
+        ['202', 'Lantai 2C', 'Deluxe'],
+        ['203', 'Lantai 2C', 'Deluxe'],
+        ['204', 'Lantai 2C', 'Deluxe'],
+        ['205', 'Lantai 2C', 'Deluxe'],
+        ['206', 'Lantai 2C', 'Deluxe'],
+        ['207', 'Lantai 2C', 'Deluxe'],
+        ['208', 'Lantai 2C', 'Deluxe'],
+        ['209', 'Lantai 2C', 'Deluxe'],
+        ['210', 'Lantai 2C', 'Deluxe'],
+        ['211', 'Lantai 2C', 'Deluxe'],
+        ['212', 'Lantai 2C', 'Deluxe'],
+        ['213', 'Lantai 2C', 'Deluxe'],
+        ['301', 'Lantai 3A', 'Junior Suite'],
+        ['302', 'Lantai 3A', 'Junior Suite'],
+        ['303', 'Lantai 3A', 'Deluxe'],
+        ['304', 'Lantai 3A', 'Deluxe'],
+        ['305', 'Lantai 3A', 'Deluxe'],
+        ['306', 'Lantai 3A', 'Deluxe'],
+        ['307', 'Lantai 3A', 'Deluxe'],
+        ['308', 'Lantai 3A', 'Deluxe'],
+        ['309', 'Lantai 3A', 'Deluxe'],
+        ['310', 'Lantai 3A', 'Deluxe'],
+        ['311', 'Lantai 3A', 'Deluxe'],
+        ['312', 'Lantai 3C', 'Deluxe'],
+        ['313', 'Lantai 3C', 'Deluxe'],
+        ['314', 'Lantai 3C', 'Deluxe'],
+        ['315', 'Lantai 3C', 'Deluxe'],
+        ['316', 'Lantai 3C', 'Deluxe'],
+        ['317', 'Lantai 3C', 'Deluxe'],
+        ['318', 'Lantai 3C', 'Deluxe'],
+        ['319', 'Lantai 3C', 'Deluxe'],
+        ['320', 'Lantai 3C', 'Deluxe'],
+        ['321', 'Lantai 3C', 'Deluxe'],
+        ['322', 'Lantai 3C', 'Deluxe'],
+        ['323', 'Lantai 3C', 'Deluxe'],
+        ['324', 'Lantai 3C', 'Deluxe'],
+        ['401', 'Lantai 4A', 'Junior Suite'],
+        ['402', 'Lantai 4A', 'Junior Suite'],
+        ['403', 'Lantai 4A', 'Premium Deluxe'],
+        ['404', 'Lantai 4A', 'Deluxe'],
+        ['405', 'Lantai 4A', 'Premium Deluxe'],
+        ['406', 'Lantai 4A', 'Deluxe'],
+        ['407', 'Lantai 4A', 'Premium Deluxe'],
+        ['408', 'Lantai 4A', 'Deluxe'],
+        ['409', 'Lantai 4A', 'Premium Deluxe'],
+        ['410', 'Lantai 4A', 'Deluxe'],
+        ['411', 'Lantai 4A', 'Premium Deluxe'],
+        ['501', 'Lantai 5A', 'Deluxe'],
+        ['502', 'Lantai 5A', 'Deluxe'],
+        ['503', 'Lantai 5A', 'Deluxe'],
+        ['504', 'Lantai 5A', 'Deluxe'],
+        ['505', 'Lantai 5A', 'Deluxe'],
+        ['506', 'Lantai 5A', 'Deluxe'],
+        ['507', 'Lantai 5A', 'Deluxe'],
+        ['508', 'Lantai 5C', 'Deluxe'],
+        ['509', 'Lantai 5C', 'Deluxe'],
+        ['510', 'Lantai 5C', 'Deluxe'],
+        ['511', 'Lantai 5C', 'Deluxe'],
+        ['512', 'Lantai 5C', 'Deluxe'],
+        ['513', 'Lantai 5C', 'Deluxe'],
+        ['514', 'Lantai 5C', 'Deluxe'],
+        ['515', 'Lantai 5C', 'Deluxe'],
+        ['516', 'Lantai 5C', 'Deluxe'],
+        ['517', 'Lantai 5C', 'Deluxe'],
+        ['518', 'Lantai 5C', 'Deluxe'],
+        ['519', 'Lantai 5C', 'Deluxe'],
+        ['520', 'Lantai 5C', 'Deluxe']
+      ];
+
+      kamarList.forEach(k => {
+        db.run(`INSERT OR IGNORE INTO kamar (nomor_kamar, lantai, tipe_kamar) VALUES (?, ?, ?)`, k);
+      });
+      console.log("✅ Data kamar lengkap berhasil dimasukkan");
     }
   });
 
-  // Tabel tugas
+  // Tabel Tugas
   db.run(`CREATE TABLE IF NOT EXISTS tugas (
     tanggal TEXT,
     kamar TEXT,
@@ -72,7 +143,7 @@ db.serialize(() => {
     PRIMARY KEY (tanggal, kamar)
   )`);
 
-  // Tabel laporan
+  // Tabel Laporan
   db.run(`CREATE TABLE IF NOT EXISTS laporan (
     tanggal TEXT,
     nomor_kamar TEXT,
@@ -105,7 +176,7 @@ db.serialize(() => {
     PRIMARY KEY (tanggal, nomor_kamar)
   )`);
 
-  // Tabel permintaan tamu
+  // Tabel Permintaan Tamu
   db.run(`CREATE TABLE IF NOT EXISTS permintaan_tamu (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     tanggal TEXT DEFAULT (DATE('now')),
@@ -132,7 +203,6 @@ app.use(session({
   cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 }
 }));
 
-// Pesan notifikasi
 app.use((req, res, next) => {
   res.locals.pesan = null;
   if (req.query.pesan === 'berhasil') res.locals.pesan = { tipe: 'sukses', teks: '✅ Data berhasil disimpan' };
@@ -153,10 +223,7 @@ app.get('/', (req, res) => {
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
   db.get(`SELECT * FROM pengguna WHERE username = ? AND aktif = 1`, [username.trim()], (err, user) => {
-    if (err) {
-      console.error("Login error:", err.message);
-      return res.render('login', { pesan: { tipe: 'error', teks: '❌ Kesalahan sistem' } });
-    }
+    if (err) return res.render('login', { pesan: { tipe: 'error', teks: '❌ Kesalahan sistem' } });
     if (user && user.password === password) {
       req.session.user = { id: user.id, nama: user.nama, peran: user.peran };
       if (user.peran === 'SPV') return res.redirect('/spv');
@@ -173,24 +240,30 @@ app.get('/spv', (req, res) => {
   if (!req.session.user || req.session.user.peran !== 'SPV') return res.redirect('/');
   const hariIni = new Date().toISOString().split('T')[0];
 
-  db.all(`SELECT nomor_kamar, lantai, tipe_kamar FROM kamar WHERE aktif = 1 ORDER BY nomor_kamar`, [], (err, daftarKamar) => {
-    if (err) {
-      console.error("Load kamar error:", err.message);
-      return res.render('spv', { user: req.session.user, tanggal: hariIni, daftarKamar: [], daftarRA: [], daftarTugas: [], pesan: { tipe: 'error', teks: '❌ Gagal memuat data' } });
-    }
+  // Ambil semua kamar
+  db.all(`SELECT * FROM kamar WHERE aktif = 1 ORDER BY nomor_kamar`, [], (err, daftarKamar) => {
+    if (err) return res.render('spv', { user: req.session.user, tanggal: hariIni, daftarKamar: [], daftarRA: [], daftarTugas: [], pesan: { tipe: 'error', teks: '❌ Gagal memuat data' } });
 
+    // Ambil daftar staf RA
     db.all(`SELECT nama FROM pengguna WHERE peran = 'RA' AND aktif = 1 ORDER BY nama`, [], (err, daftarRA) => {
-      if (err) {
-        console.error("Load RA error:", err.message);
-        return res.render('spv', { user: req.session.user, tanggal: hariIni, daftarKamar, daftarRA: [], daftarTugas: [], pesan: { tipe: 'error', teks: '❌ Gagal memuat data' } });
-      }
+      if (err) return res.render('spv', { user: req.session.user, tanggal: hariIni, daftarKamar, daftarRA: [], daftarTugas: [], pesan: { tipe: 'error', teks: '❌ Gagal memuat data' } });
 
-      db.all(`SELECT t.*, k.lantai FROM tugas t JOIN kamar k ON t.kamar = k.nomor_kamar WHERE t.tanggal = ? ORDER BY t.kamar`, [hariIni], (err, daftarTugas) => {
-        if (err) {
-          console.error("Load tugas error:", err.message);
-          return res.render('spv', { user: req.session.user, tanggal: hariIni, daftarKamar, daftarRA, daftarTugas: [], pesan: { tipe: 'error', teks: '❌ Gagal memuat data' } });
-        }
-        res.render('spv', { user: req.session.user, tanggal: hariIni, daftarKamar, daftarRA, daftarTugas, pesan: res.locals.pesan });
+      // Ambil daftar tugas hari ini
+      db.all(`SELECT t.*, k.lantai, k.tipe_kamar FROM tugas t JOIN kamar k ON t.kamar = k.nomor_kamar WHERE t.tanggal = ? ORDER BY t.kamar`, [hariIni], (err, daftarTugas) => {
+        if (err) return res.render('spv', { user: req.session.user, tanggal: hariIni, daftarKamar, daftarRA, daftarTugas: [], pesan: { tipe: 'error', teks: '❌ Gagal memuat data' } });
+
+        // Buat daftar kamar yang SUDAH dipakai hari ini
+        const kamarSudahAda = daftarTugas.map(t => t.kamar);
+
+        res.render('spv', {
+          user: req.session.user,
+          tanggal: hariIni,
+          daftarKamar,
+          daftarRA,
+          daftarTugas,
+          kamarSudahAda,
+          pesan: res.locals.pesan
+        });
       });
     });
   });
@@ -234,32 +307,22 @@ app.get('/ra', (req, res) => {
     WHERE t.tanggal = ? AND t.petugas = ?
     ORDER BY t.kamar
   `, [hariIni, req.session.user.nama], (err, tugas) => {
-    if (err) {
-      console.error("Load RA error:", err.message);
-      return res.redirect('/?pesan=gagal');
-    }
+    if (err) return res.redirect('/?pesan=gagal');
     res.render('ra', { user: req.session.user, tanggal: hariIni, tugas, pesan: res.locals.pesan });
   });
 });
 
-// Proses Mulai Kamar
 app.post('/mulai-kamar', (req, res) => {
   const { tanggal, kamar } = req.body;
   const waktuMulai = new Date().toTimeString().slice(0, 5);
 
-  db.run(`
-    INSERT OR REPLACE INTO laporan (tanggal, nomor_kamar, waktu_masuk, petugas)
-    VALUES (?, ?, ?, ?)
-  `, [tanggal, kamar, waktuMulai, req.session.user.nama], (err) => {
-    if (err) {
-      console.error("Mulai kamar error:", err.message);
-      return res.redirect('/ra?pesan=gagal');
-    }
-    res.redirect('/ra?pesan=berhasil');
-  });
+  db.run(`INSERT OR REPLACE INTO laporan (tanggal, nomor_kamar, waktu_masuk, petugas) VALUES (?, ?, ?, ?)`,
+    [tanggal, kamar, waktuMulai, req.session.user.nama], (err) => {
+      if (err) return res.redirect('/ra?pesan=gagal');
+      res.redirect('/ra?pesan=berhasil');
+    });
 });
 
-// Proses Selesai Kamar
 app.post('/selesai-kamar', (req, res) => {
   const {
     tanggal, kamar, waktu_masuk,
@@ -290,13 +353,9 @@ app.post('/selesai-kamar', (req, res) => {
     sugar || 0, tea || 0, coffee || 0, creamer || 0, mineral || 0,
     req.session.user.nama
   ], (err) => {
-    if (err) {
-      console.error("Simpan laporan error:", err.message);
-      return res.redirect('/ra?pesan=gagal');
-    }
+    if (err) return res.redirect('/ra?pesan=gagal');
 
     db.run(`UPDATE tugas SET selesai = 1 WHERE tanggal = ? AND kamar = ?`, [tanggal, kamar], (err) => {
-      if (err) console.error("Update tugas error:", err.message);
       res.redirect('/ra?pesan=berhasil');
     });
   });
@@ -307,17 +366,11 @@ app.get('/ot', (req, res) => {
   if (!req.session.user || req.session.user.peran !== 'OT') return res.redirect('/');
   const hariIni = new Date().toISOString().split('T')[0];
 
-  db.all(`SELECT nomor_kamar FROM kamar WHERE aktif = 1 ORDER BY nomor_kamar`, [], (err, daftarKamar) => {
-    if (err) {
-      console.error("Load kamar OT error:", err.message);
-      return res.render('ot', { user: req.session.user, tanggal: hariIni, daftarKamar: [], daftarPermintaan: [], pesan: { tipe: 'error', teks: '❌ Gagal memuat data' } });
-    }
+  db.all(`SELECT nomor_kamar, lantai, tipe_kamar FROM kamar WHERE aktif = 1 ORDER BY nomor_kamar`, [], (err, daftarKamar) => {
+    if (err) return res.render('ot', { user: req.session.user, tanggal: hariIni, daftarKamar: [], daftarPermintaan: [], pesan: { tipe: 'error', teks: '❌ Gagal memuat data' } });
 
     db.all(`SELECT * FROM permintaan_tamu WHERE tanggal = ? ORDER BY waktu_masuk DESC`, [hariIni], (err, daftarPermintaan) => {
-      if (err) {
-        console.error("Load permintaan error:", err.message);
-        return res.render('ot', { user: req.session.user, tanggal: hariIni, daftarKamar, daftarPermintaan: [], pesan: { tipe: 'error', teks: '❌ Gagal memuat data' } });
-      }
+      if (err) return res.render('ot', { user: req.session.user, tanggal: hariIni, daftarKamar, daftarPermintaan: [], pesan: { tipe: 'error', teks: '❌ Gagal memuat data' } });
       res.render('ot', { user: req.session.user, tanggal: hariIni, daftarKamar, daftarPermintaan, pesan: res.locals.pesan });
     });
   });
@@ -327,7 +380,6 @@ app.post('/tambah-permintaan', (req, res) => {
   const { nomor_kamar, jenis_permintaan, keterangan } = req.body;
   db.run(`INSERT INTO permintaan_tamu (nomor_kamar, jenis_permintaan, keterangan, dibuat_oleh) VALUES (?, ?, ?, ?)`,
     [nomor_kamar, jenis_permintaan, keterangan || '', req.session.user.nama], (err) => {
-      if (err) console.error("Tambah permintaan error:", err.message);
       res.redirect('/ot?pesan=berhasil');
     });
 });
@@ -335,7 +387,6 @@ app.post('/tambah-permintaan', (req, res) => {
 app.post('/selesai-permintaan', (req, res) => {
   const { id } = req.body;
   db.run(`UPDATE permintaan_tamu SET status = 'Selesai', waktu_selesai = TIME('now') WHERE id = ?`, [id], (err) => {
-    if (err) console.error("Selesai permintaan error:", err.message);
     res.redirect('/ot?pesan=berhasil');
   });
 });
