@@ -19,14 +19,12 @@
     }
   </script>
   <style>
-    .btn-time {
-      @apply px-4 py-1.5 rounded text-sm font-medium transition-all w-16 text-center cursor-pointer;
-    }
-    .btn-in { @apply bg-green-500 hover:bg-green-600 text-white; }
-    .btn-out { @apply bg-blue-500 hover:bg-blue-600 text-white; }
+    .btn-time { @apply px-3 py-1.5 rounded text-sm font-medium transition-all w-14 text-center border-none; }
+    .btn-in { @apply bg-green-500 hover:bg-green-600 text-white cursor-pointer; }
+    .btn-out { @apply bg-blue-500 hover:bg-blue-600 text-white cursor-pointer; }
     .btn-disabled { @apply bg-gray-300 text-gray-500 cursor-not-allowed; }
-    .input-angka { @apply w-16 border border-gray-300 rounded p-1 text-center text-sm; }
-    .section-title { @apply text-sm font-semibold text-gray-700 mb-2 border-b pb-1; }
+    .select-angka { @apply w-14 border border-gray-300 rounded p-1 text-center text-sm; }
+    .section-title { @apply text-base font-bold text-gray-800 mb-3 mt-5; }
   </style>
 </head>
 <body class="bg-hotel-neutral min-h-screen">
@@ -74,8 +72,8 @@
         <input type="hidden" name="kamar" value="<%= item.kamar %>">
         <input type="hidden" name="shift" value="Morning">
 
-        <!-- Shift & Waktu -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+        <!-- Waktu Masuk & Keluar -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Shift</label>
             <input type="text" value="Morning" readonly class="w-full border border-gray-300 rounded p-2 text-sm bg-gray-100">
@@ -83,143 +81,303 @@
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Waktu Masuk</label>
             <div class="flex items-center gap-2">
-              <input type="text" name="waktu_masuk" id="masuk_<%= item.kamar %>" readonly placeholder="Belum dicatat" class="flex-1 border border-gray-300 rounded p-2 text-sm bg-gray-50" value="<%= item.waktuMasuk || '' %>">
-              <button type="button" onclick="catatMasuk('<%= item.kamar %>')" id="btn_in_<%= item.kamar %>" class="btn-time <%= item.waktuMasuk ? 'btn-disabled' : 'btn-in' %>" <%= item.waktuMasuk ? 'disabled' : '' %>>IN</button>
+              <input type="text" name="waktu_masuk" id="masuk_<%= item.kamar %>" readonly placeholder="Belum dicatat" class="flex-1 border border-gray-300 rounded p-2 text-sm bg-gray-50" value="<%= item.waktu_masuk || '' %>">
+              <button type="button" onclick="catatMasuk('<%= item.kamar %>')" id="btn_in_<%= item.kamar %>" class="btn-time <%= item.waktu_masuk ? 'btn-disabled' : 'btn-in' %>" <%= item.waktu_masuk ? 'disabled' : '' %>>IN</button>
             </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Waktu Keluar</label>
             <div class="flex items-center gap-2">
-              <input type="text" name="waktu_keluar" id="keluar_<%= item.kamar %>" readonly placeholder="Belum dicatat" class="flex-1 border border-gray-300 rounded p-2 text-sm bg-gray-50" value="<%= item.waktuKeluar || '' %>">
-              <button type="button" onclick="catatKeluar('<%= item.kamar %>')" id="btn_out_<%= item.kamar %>" class="btn-time <%= item.waktuMasuk && !item.waktuKeluar ? 'btn-out' : 'btn-disabled' %>" <%= !item.waktuMasuk || item.waktuKeluar ? 'disabled' : '' %>>OUT</button>
+              <input type="text" name="waktu_keluar" id="keluar_<%= item.kamar %>" readonly placeholder="Belum dicatat" class="flex-1 border border-gray-300 rounded p-2 text-sm bg-gray-50" value="<%= item.waktu_keluar || '' %>">
+              <button type="button" onclick="catatKeluar('<%= item.kamar %>')" id="btn_out_<%= item.kamar %>" class="btn-time <%= item.waktu_masuk && !item.waktu_keluar ? 'btn-out' : 'btn-disabled' %>" <%= !item.waktu_masuk || item.waktu_keluar ? 'disabled' : '' %>>OUT</button>
             </div>
           </div>
         </div>
 
-        <!-- Linen Section -->
-        <div class="mb-5">
-          <h4 class="section-title">Linen Digunakan</h4>
-          <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3">
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Sheet Double</label>
-              <input type="number" min="0" name="sheet_double" class="input-angka" value="<%= item.linen?.sheet_double || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Sheet Single</label>
-              <input type="number" min="0" name="sheet_single" class="input-angka" value="<%= item.linen?.sheet_single || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Duvet Double</label>
-              <input type="number" min="0" name="duvet_double" class="input-angka" value="<%= item.linen?.duvet_double || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Duvet Single</label>
-              <input type="number" min="0" name="duvet_single" class="input-angka" value="<%= item.linen?.duvet_single || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Bath Towel</label>
-              <input type="number" min="0" name="bath_towel" class="input-angka" value="<%= item.linen?.bath_towel || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Hand Towel</label>
-              <input type="number" min="0" name="hand_towel" class="input-angka" value="<%= item.linen?.hand_towel || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Bath Mat</label>
-              <input type="number" min="0" name="bath_mat" class="input-angka" value="<%= item.linen?.bath_mat || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Pillow Case</label>
-              <input type="number" min="0" name="pillow_case" class="input-angka" value="<%= item.linen?.pillow_case || 0 %>">
-            </div>
+        <!-- Linen -->
+        <h4 class="section-title">Linen Digunakan</h4>
+        <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3">
+          <% const linen = item.linen ? JSON.parse(item.linen) : {}; %>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Sheet Double</label>
+            <select name="sheet_double" class="select-angka">
+              <option value="0" <%= linen.sheet_double === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= linen.sheet_double === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= linen.sheet_double === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= linen.sheet_double === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= linen.sheet_double === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Sheet Single</label>
+            <select name="sheet_single" class="select-angka">
+              <option value="0" <%= linen.sheet_single === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= linen.sheet_single === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= linen.sheet_single === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= linen.sheet_single === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= linen.sheet_single === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Duvet Double</label>
+            <select name="duvet_double" class="select-angka">
+              <option value="0" <%= linen.duvet_double === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= linen.duvet_double === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= linen.duvet_double === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= linen.duvet_double === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= linen.duvet_double === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Duvet Single</label>
+            <select name="duvet_single" class="select-angka">
+              <option value="0" <%= linen.duvet_single === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= linen.duvet_single === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= linen.duvet_single === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= linen.duvet_single === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= linen.duvet_single === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Bath Towel</label>
+            <select name="bath_towel" class="select-angka">
+              <option value="0" <%= linen.bath_towel === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= linen.bath_towel === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= linen.bath_towel === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= linen.bath_towel === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= linen.bath_towel === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Hand Towel</label>
+            <select name="hand_towel" class="select-angka">
+              <option value="0" <%= linen.hand_towel === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= linen.hand_towel === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= linen.hand_towel === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= linen.hand_towel === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= linen.hand_towel === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Bath Mat</label>
+            <select name="bath_mat" class="select-angka">
+              <option value="0" <%= linen.bath_mat === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= linen.bath_mat === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= linen.bath_mat === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= linen.bath_mat === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= linen.bath_mat === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Pillow Case</label>
+            <select name="pillow_case" class="select-angka">
+              <option value="0" <%= linen.pillow_case === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= linen.pillow_case === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= linen.pillow_case === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= linen.pillow_case === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= linen.pillow_case === 4 ? 'selected' : '' %>>4</option>
+            </select>
           </div>
         </div>
 
-        <!-- Amenities Section -->
-        <div class="mb-5">
-          <h4 class="section-title">Guest Supplies & Amenities</h4>
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 lg:grid-cols-9 gap-3">
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Tissue</label>
-              <input type="number" min="0" name="tissue" class="input-angka" value="<%= item.amenities?.tissue || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Hand Soap</label>
-              <input type="number" min="0" name="hand_soap" class="input-angka" value="<%= item.amenities?.hand_soap || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Shampoo</label>
-              <input type="number" min="0" name="shampoo" class="input-angka" value="<%= item.amenities?.shampoo || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Shower Gel</label>
-              <input type="number" min="0" name="shower_gel" class="input-angka" value="<%= item.amenities?.shower_gel || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Tooth Brush</label>
-              <input type="number" min="0" name="tooth_brush" class="input-angka" value="<%= item.amenities?.tooth_brush || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Sterilizer</label>
-              <input type="number" min="0" name="sterilizer" class="input-angka" value="<%= item.amenities?.sterilizer || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Shower Cap</label>
-              <input type="number" min="0" name="shower_cap" class="input-angka" value="<%= item.amenities?.shower_cap || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Slipper</label>
-              <input type="number" min="0" name="slipper" class="input-angka" value="<%= item.amenities?.slipper || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Laundry Bag</label>
-              <input type="number" min="0" name="laundry_bag" class="input-angka" value="<%= item.amenities?.laundry_bag || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Laundry List</label>
-              <input type="number" min="0" name="laundry_list" class="input-angka" value="<%= item.amenities?.laundry_list || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Memo Pad</label>
-              <input type="number" min="0" name="memo_pad" class="input-angka" value="<%= item.amenities?.memo_pad || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Pencil</label>
-              <input type="number" min="0" name="pencil" class="input-angka" value="<%= item.amenities?.pencil || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Plastic Bin</label>
-              <input type="number" min="0" name="plastic_bin" class="input-angka" value="<%= item.amenities?.plastic_bin || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Tissue Box</label>
-              <input type="number" min="0" name="tissue_box" class="input-angka" value="<%= item.amenities?.tissue_box || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Coffee</label>
-              <input type="number" min="0" name="coffee" class="input-angka" value="<%= item.amenities?.coffee || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Sugar</label>
-              <input type="number" min="0" name="sugar" class="input-angka" value="<%= item.amenities?.sugar || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Tea</label>
-              <input type="number" min="0" name="tea" class="input-angka" value="<%= item.amenities?.tea || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Creamer</label>
-              <input type="number" min="0" name="creamer" class="input-angka" value="<%= item.amenities?.creamer || 0 %>">
-            </div>
-            <div class="text-center">
-              <label class="block text-xs text-gray-600 mb-1">Mineral Water</label>
-              <input type="number" min="0" name="mineral_water" class="input-angka" value="<%= item.amenities?.mineral_water || 0 %>">
-            </div>
+        <!-- Amenities -->
+        <h4 class="section-title">Guest Supplies & Amenities</h4>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 lg:grid-cols-9 gap-3">
+          <% const amen = item.amenities ? JSON.parse(item.amenities) : {}; %>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Tissue</label>
+            <select name="tissue" class="select-angka">
+              <option value="0" <%= amen.tissue === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= amen.tissue === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= amen.tissue === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= amen.tissue === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= amen.tissue === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Hand Soap</label>
+            <select name="hand_soap" class="select-angka">
+              <option value="0" <%= amen.hand_soap === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= amen.hand_soap === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= amen.hand_soap === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= amen.hand_soap === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= amen.hand_soap === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Shampoo</label>
+            <select name="shampoo" class="select-angka">
+              <option value="0" <%= amen.shampoo === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= amen.shampoo === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= amen.shampoo === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= amen.shampoo === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= amen.shampoo === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Shower Gel</label>
+            <select name="shower_gel" class="select-angka">
+              <option value="0" <%= amen.shower_gel === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= amen.shower_gel === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= amen.shower_gel === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= amen.shower_gel === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= amen.shower_gel === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Tooth Brush</label>
+            <select name="tooth_brush" class="select-angka">
+              <option value="0" <%= amen.tooth_brush === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= amen.tooth_brush === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= amen.tooth_brush === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= amen.tooth_brush === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= amen.tooth_brush === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Sterilizer</label>
+            <select name="sterilizer" class="select-angka">
+              <option value="0" <%= amen.sterilizer === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= amen.sterilizer === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= amen.sterilizer === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= amen.sterilizer === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= amen.sterilizer === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Shower Cap</label>
+            <select name="shower_cap" class="select-angka">
+              <option value="0" <%= amen.shower_cap === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= amen.shower_cap === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= amen.shower_cap === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= amen.shower_cap === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= amen.shower_cap === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Slipper</label>
+            <select name="slipper" class="select-angka">
+              <option value="0" <%= amen.slipper === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= amen.slipper === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= amen.slipper === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= amen.slipper === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= amen.slipper === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Laundry Bag</label>
+            <select name="laundry_bag" class="select-angka">
+              <option value="0" <%= amen.laundry_bag === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= amen.laundry_bag === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= amen.laundry_bag === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= amen.laundry_bag === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= amen.laundry_bag === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Laundry List</label>
+            <select name="laundry_list" class="select-angka">
+              <option value="0" <%= amen.laundry_list === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= amen.laundry_list === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= amen.laundry_list === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= amen.laundry_list === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= amen.laundry_list === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Memo Pad</label>
+            <select name="memo_pad" class="select-angka">
+              <option value="0" <%= amen.memo_pad === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= amen.memo_pad === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= amen.memo_pad === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= amen.memo_pad === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= amen.memo_pad === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Pencil</label>
+            <select name="pencil" class="select-angka">
+              <option value="0" <%= amen.pencil === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= amen.pencil === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= amen.pencil === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= amen.pencil === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= amen.pencil === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Plastic Bin</label>
+            <select name="plastic_bin" class="select-angka">
+              <option value="0" <%= amen.plastic_bin === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= amen.plastic_bin === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= amen.plastic_bin === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= amen.plastic_bin === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= amen.plastic_bin === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Tissue Box</label>
+            <select name="tissue_box" class="select-angka">
+              <option value="0" <%= amen.tissue_box === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= amen.tissue_box === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= amen.tissue_box === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= amen.tissue_box === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= amen.tissue_box === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Coffee</label>
+            <select name="coffee" class="select-angka">
+              <option value="0" <%= amen.coffee === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= amen.coffee === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= amen.coffee === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= amen.coffee === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= amen.coffee === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Sugar</label>
+            <select name="sugar" class="select-angka">
+              <option value="0" <%= amen.sugar === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= amen.sugar === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= amen.sugar === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= amen.sugar === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= amen.sugar === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Tea</label>
+            <select name="tea" class="select-angka">
+              <option value="0" <%= amen.tea === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= amen.tea === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= amen.tea === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= amen.tea === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= amen.tea === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Creamer</label>
+            <select name="creamer" class="select-angka">
+              <option value="0" <%= amen.creamer === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= amen.creamer === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= amen.creamer === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= amen.creamer === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= amen.creamer === 4 ? 'selected' : '' %>>4</option>
+            </select>
+          </div>
+          <div class="text-center">
+            <label class="block text-xs text-gray-600 mb-1">Mineral Water</label>
+            <select name="mineral_water" class="select-angka">
+              <option value="0" <%= amen.mineral_water === 0 ? 'selected' : '' %>>0</option>
+              <option value="1" <%= amen.mineral_water === 1 ? 'selected' : '' %>>1</option>
+              <option value="2" <%= amen.mineral_water === 2 ? 'selected' : '' %>>2</option>
+              <option value="3" <%= amen.mineral_water === 3 ? 'selected' : '' %>>3</option>
+              <option value="4" <%= amen.mineral_water === 4 ? 'selected' : '' %>>4</option>
+            </select>
           </div>
         </div>
 
-        <!-- Keterangan & Tombol Simpan -->
-        <div class="flex flex-col md:flex-row gap-4 items-end">
+        <!-- Keterangan & Simpan -->
+        <div class="mt-5 flex flex-col md:flex-row gap-4 items-end">
           <div class="flex-1">
             <label class="block text-sm font-medium text-gray-700 mb-1">Keterangan Tambahan</label>
             <textarea name="keterangan" rows="2" class="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:ring-1 focus:ring-hotel-primary" placeholder="Tambahkan catatan jika diperlukan..."><%= item.keterangan || '' %></textarea>
