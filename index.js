@@ -144,24 +144,27 @@ app.get('/ra', async (req, res) => {
   }
 });
 
-// Mulai pengerjaan
+// Mulai pengerjaan kamar
 app.post('/mulai-kamar', async (req, res) => {
   try {
     const { tanggal, kamar } = req.body;
     const waktuMulai = new Date().toTimeString().slice(0, 5);
+
     await pool.query(`
       INSERT INTO laporan (tanggal, nomor_kamar, waktu_masuk, petugas)
       VALUES ($1, $2, $3, $4)
-      ON CONFLICT (tanggal, nomor_kamar) DO UPDATE SET waktu_masuk = $3
+      ON CONFLICT (tanggal, nomor_kamar) 
+      DO UPDATE SET waktu_masuk = $3
     `, [tanggal, kamar, waktuMulai, req.session.user.nama]);
+
     res.redirect('/ra?pesan=berhasil');
   } catch (err) {
-    console.error("Mulai Kamar Error:", err);
+    console.error("❌ Mulai Kamar Error:", err);
     res.redirect('/ra?pesan=gagal');
   }
 });
 
-// Selesai & Simpan Laporan Lengkap
+// Selesai pengerjaan & simpan laporan lengkap
 app.post('/selesai-kamar', async (req, res) => {
   try {
     const {
@@ -185,14 +188,33 @@ app.post('/selesai-kamar', async (req, res) => {
         sugar, tea, orange_r, mineral, petugas
       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28)
       ON CONFLICT (tanggal, nomor_kamar) DO UPDATE SET
-        waktu_masuk=$3, waktu_keluar=$4,
-        sheet_twin=$5, sheet_king=$6, duvet_twin=$7, duvet_king=$8,
-        bath_towel=$9, hand_towel=$10, bath_mat=$11, pillow_case=$12,
-        shampoo=$13, soap=$14, shower_gel=$15, shower_cap=$16, sewing_kit=$17,
-        laundry_bag=$18, lotion=$19, mo=$20, prgl=$21, magic=$22, shoe=$23,
-        sugar=$24, tea=$25, orange_r=$26, mineral=$27
+        waktu_masuk = $3,
+        waktu_keluar = $4,
+        sheet_twin = $5,
+        sheet_king = $6,
+        duvet_twin = $7,
+        duvet_king = $8,
+        bath_towel = $9,
+        hand_towel = $10,
+        bath_mat = $11,
+        pillow_case = $12,
+        shampoo = $13,
+        soap = $14,
+        shower_gel = $15,
+        shower_cap = $16,
+        sewing_kit = $17,
+        laundry_bag = $18,
+        lotion = $19,
+        mo = $20,
+        prgl = $21,
+        magic = $22,
+        shoe = $23,
+        sugar = $24,
+        tea = $25,
+        orange_r = $26,
+        mineral = $27
     `, [
-      tanggal, kamar, waktu_masuk, waktuSelesai,
+      tanggal, kamar, waktu_masuk || null, waktuSelesai,
       sheet_twin || 0, sheet_king || 0, duvet_twin || 0, duvet_king || 0,
       bath_towel || 0, hand_towel || 0, bath_mat || 0, pillow_case || 0,
       shampoo || 0, soap || 0, shower_gel || 0, shower_cap || 0, sewing_kit || 0,
@@ -201,10 +223,15 @@ app.post('/selesai-kamar', async (req, res) => {
       req.session.user.nama
     ]);
 
-    await pool.query("UPDATE tugas SET selesai = true WHERE tanggal = $1 AND kamar = $2", [tanggal, kamar]);
+    // Tandai tugas selesai
+    await pool.query(
+      "UPDATE tugas SET selesai = true WHERE tanggal = $1 AND kamar = $2",
+      [tanggal, kamar]
+    );
+
     res.redirect('/ra?pesan=berhasil');
   } catch (err) {
-    console.error("Selesai Kamar Error:", err);
+    console.error("❌ Selesai Kamar Error:", err);
     res.redirect('/ra?pesan=gagal');
   }
 });
