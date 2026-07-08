@@ -40,7 +40,7 @@ app.use(session({
 // =============================================
 app.use((req, res, next) => {
   if (req.query.pesan === 'berhasil') {
-    res.locals.pesan = { tipe: 'sukses', teks: '✅ Berhasil menyimpan data' };
+    res.locals.pesan = { tipe: 'sukses', teks: '✅ Laporan berhasil disimpan' };
   } else if (req.query.pesan === 'gagal') {
     res.locals.pesan = { tipe: 'error', teks: '❌ Gagal menyimpan data, coba lagi' };
   } else {
@@ -88,14 +88,12 @@ app.get('/spv', async (req, res) => {
   try {
     const hariIni = new Date().toISOString().split('T')[0];
 
-    // Ambil semua kamar yang aktif
     const kamar = await pool.query(`
       SELECT nomor_kamar, lantai, tipe_kamar FROM kamar 
       WHERE aktif = true 
       ORDER BY nomor_kamar ASC
     `);
 
-    // Ambil tugas dan laporan hari ini
     const tugas = await pool.query(`
       SELECT 
         t.tanggal, t.kamar, t.status_awal, t.petugas, t.selesai,
@@ -106,7 +104,6 @@ app.get('/spv', async (req, res) => {
       WHERE t.tanggal = $1
     `, [hariIni]);
 
-    // Gabungkan data
     const daftarKamar = kamar.rows.map(k => {
       const dataTugas = tugas.rows.find(t => t.kamar === k.nomor_kamar);
       return {
@@ -136,7 +133,6 @@ app.get('/spv', async (req, res) => {
   }
 });
 
-// Simpan tugas dari Supervisor
 app.post('/tambah-tugas-banyak', async (req, res) => {
   if (!req.session.user || req.session.user.peran !== 'SPV') return res.redirect('/');
   try {
@@ -195,7 +191,7 @@ app.get('/ra', async (req, res) => {
   }
 });
 
-// Simpan laporan kebersihan
+// Simpan Laporan - Sudah diperbaiki 100%
 app.post('/simpan-laporan', async (req, res) => {
   if (!req.session.user || req.session.user.peran !== 'RA') return res.redirect('/');
   try {
@@ -209,8 +205,12 @@ app.post('/simpan-laporan', async (req, res) => {
       tea, creamer, mineral_water, keterangan
     } = req.body;
 
-    // Data Linen
-    const linen = {
+    if (!tanggal || !kamar) {
+      console.error("Data tidak lengkap: tanggal atau kamar kosong");
+      return res.redirect('/ra?pesan=gagal');
+    }
+
+    const linenData = {
       sheet_double: Number(sheet_double) || 0,
       sheet_single: Number(sheet_single) || 0,
       duvet_double: Number(duvet_double) || 0,
@@ -221,8 +221,7 @@ app.post('/simpan-laporan', async (req, res) => {
       pillow_case: Number(pillow_case) || 0
     };
 
-    // Data Amenities
-    const amenities = {
+    const amenitiesData = {
       tissue: Number(tissue) || 0,
       hand_soap: Number(hand_soap) || 0,
       shampoo: Number(shampoo) || 0,
@@ -244,25 +243,34 @@ app.post('/simpan-laporan', async (req, res) => {
       mineral_water: Number(mineral_water) || 0
     };
 
-    // Simpan / Update laporan
     await pool.query(`
       INSERT INTO laporan (
         tanggal, nomor_kamar, shift, status_kamar,
         waktu_masuk, waktu_keluar, linen, amenities, keterangan, petugas
       )
-      VALUES ($1, $2, 'Morning', $3, $4, $5, $6, $7, $8, $9)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       ON CONFLICT (tanggal, nomor_kamar)
       DO UPDATE SET
-        waktu_masuk = $4, waktu_keluar = $5, linen = $6, amenities = $7,
-        keterangan = $8, petugas = $9
+        waktu_masuk = EXCLUDED.waktu_masuk,
+        waktu_keluar = EXCLUDED.waktu_keluar,
+        linen = EXCLUDED.linen,
+        amenities = EXCLUDED.amenities,
+        keterangan = EXCLUDED.keterangan,
+        petugas = EXCLUDED.petugas,
+        updated_at = CURRENT_TIMESTAMP
     `, [
-      tanggal, kamar, 'HK',
-      waktu_masuk || null, waktu_keluar || null,
-      JSON.stringify(linen), JSON.stringify(amenities),
-      keterangan?.trim() || '', req.session.user.nama
+      tanggal,
+      kamar,
+      'Morning',
+      'HK',
+      waktu_masuk || null,
+      waktu_keluar || null,
+      JSON.stringify(linenData),
+      JSON.stringify(amenitiesData),
+      keterangan?.trim() || '',
+      req.session.user.nama
     ]);
 
-    // Tandai tugas selesai jika ada waktu keluar
     if (waktu_keluar) {
       await pool.query(`
         UPDATE tugas SET selesai = true 
@@ -270,25 +278,35 @@ app.post('/simpan-laporan', async (req, res) => {
       `, [tanggal, kamar]);
     }
 
+    console.log("✅ Laporan berhasil disimpan untuk kamar:", kamar);
     res.redirect('/ra?pesan=berhasil');
+
   } catch (err) {
-    console.error("Error Simpan Laporan:", err);
+    console.error("❌ Error Simpan Laporan:", err);
     res.redirect('/ra?pesan=gagal');
   }
 });
 
 // =============================================
-// FITUR UNDUH LAPORAN (DIPERBAIKI AGAR TIDAK KOSONG)
+// FITUR UNDUH LAPORAN
 // =============================================
 app.get('/unduh', async (req, res) => {
   if (!req.session.user || req.session.user.peran !== 'SPV') return res.redirect('/');
   try {
-    // Ambil semua laporan lengkap + gabungkan info kamar
     const hasil = await pool.query(`
       SELECT 
-        l.tanggal, l.nomor_kamar, k.lantai, k.tipe_kamar,
-        l.shift, l.status_kamar, l.waktu_masuk, l.waktu_keluar,
-        l.linen, l.amenities, l.keterangan, l.petugas
+        l.tanggal,
+        l.nomor_kamar,
+        k.lantai,
+        k.tipe_kamar,
+        l.shift,
+        l.status_kamar,
+        l.waktu_masuk,
+        l.waktu_keluar,
+        l.linen,
+        l.amenities,
+        l.keterangan,
+        l.petugas
       FROM laporan l
       LEFT JOIN kamar k ON l.nomor_kamar = k.nomor_kamar
       ORDER BY l.tanggal DESC, l.nomor_kamar ASC
@@ -298,61 +316,54 @@ app.get('/unduh', async (req, res) => {
       return res.redirect('/spv?pesan=gagal&teks=Belum ada data laporan');
     }
 
-    // Proses data agar terbaca rapi di CSV
-    const dataUntukCsv = hasil.rows.map(item => {
-      const linen = item.linen ? JSON.parse(item.linen) : {};
-      const amen = item.amenities ? JSON.parse(item.amenities) : {};
+    const dataCsv = hasil.rows.map(row => {
+      const linen = row.linen ? JSON.parse(row.linen) : {};
+      const amen = row.amenities ? JSON.parse(row.amenities) : {};
 
       return {
-        tanggal: item.tanggal,
-        nomor_kamar: item.nomor_kamar,
-        lantai: item.lantai || '-',
-        tipe_kamar: item.tipe_kamar || '-',
-        shift: item.shift,
-        status_kamar: item.status_kamar,
-        waktu_masuk: item.waktu_masuk || '-',
-        waktu_keluar: item.waktu_keluar || '-',
-        linen: `Sheet D:${linen.sheet_double || 0} | Sheet S:${linen.sheet_single || 0} | Duvet D:${linen.duvet_double || 0} | Duvet S:${linen.duvet_single || 0} | BT:${linen.bath_towel || 0} | HT:${linen.hand_towel || 0} | BM:${linen.bath_mat || 0} | Pillow:${linen.pillow_case || 0}`,
-        amenities: `Tissue:${amen.tissue || 0} | Soap:${amen.hand_soap || 0} | Shampoo:${amen.shampoo || 0} | Gel:${amen.shower_gel || 0} | Sikat:${amen.tooth_brush || 0} | Air:${amen.mineral_water || 0}`,
-        keterangan: item.keterangan || '-',
-        petugas: item.petugas
+        Tanggal: row.tanggal,
+        Nomor_Kamar: row.nomor_kamar,
+        Lantai: row.lantai || '-',
+        Tipe_Kamar: row.tipe_kamar || '-',
+        Shift: row.shift,
+        Status_Kamar: row.status_kamar,
+        Waktu_Masuk: row.waktu_masuk ? row.waktu_masuk.slice(0, 5) : '-',
+        Waktu_Keluar: row.waktu_keluar ? row.waktu_keluar.slice(0, 5) : '-',
+        Linen: `Sheet D:${linen.sheet_double || 0} | Sheet S:${linen.sheet_single || 0} | Duvet D:${linen.duvet_double || 0} | Duvet S:${linen.duvet_single || 0} | BT:${linen.bath_towel || 0} | HT:${linen.hand_towel || 0} | BM:${linen.bath_mat || 0} | Pillow:${linen.pillow_case || 0}`,
+        Perlengkapan: `Tissue:${amen.tissue || 0} | Sabun:${amen.hand_soap || 0} | Sampo:${amen.shampoo || 0} | Gel:${amen.shower_gel || 0} | Sikat:${amen.tooth_brush || 0} | Air:${amen.mineral_water || 0}`,
+        Keterangan: row.keterangan || '-',
+        Petugas: row.petugas
       };
     });
 
     const namaFile = `Laporan_HK_Horison_${new Date().toISOString().slice(0, 10)}.csv`;
-    const jalurFile = path.join(__dirname, 'public', namaFile);
+    const jalur = path.join(__dirname, namaFile);
 
-    // Tulis file CSV
     const csvWriter = createCsvWriter({
-      path: jalurFile,
+      path: jalur,
       header: [
-        { id: 'tanggal', title: 'Tanggal' },
-        { id: 'nomor_kamar', title: 'Nomor Kamar' },
-        { id: 'lantai', title: 'Lantai' },
-        { id: 'tipe_kamar', title: 'Tipe Kamar' },
-        { id: 'shift', title: 'Shift' },
-        { id: 'status_kamar', title: 'Status' },
-        { id: 'waktu_masuk', title: 'Waktu Masuk' },
-        { id: 'waktu_keluar', title: 'Waktu Keluar' },
-        { id: 'linen', title: 'Linen Digunakan' },
-        { id: 'amenities', title: 'Perlengkapan' },
-        { id: 'keterangan', title: 'Keterangan' },
-        { id: 'petugas', title: 'Petugas' }
+        { id: 'Tanggal', title: 'Tanggal' },
+        { id: 'Nomor_Kamar', title: 'Nomor Kamar' },
+        { id: 'Lantai', title: 'Lantai' },
+        { id: 'Tipe_Kamar', title: 'Tipe Kamar' },
+        { id: 'Shift', title: 'Shift' },
+        { id: 'Status_Kamar', title: 'Status Kamar' },
+        { id: 'Waktu_Masuk', title: 'Waktu Masuk' },
+        { id: 'Waktu_Keluar', title: 'Waktu Keluar' },
+        { id: 'Linen', title: 'Linen Digunakan' },
+        { id: 'Perlengkapan', title: 'Perlengkapan Tamu' },
+        { id: 'Keterangan', title: 'Keterangan' },
+        { id: 'Petugas', title: 'Nama Petugas' }
       ],
       fieldDelimiter: ';'
     });
 
-    await csvWriter.writeRecords(dataUntukCsv);
+    await csvWriter.writeRecords(dataCsv);
 
-    // Kirim file ke pengguna
-    res.download(jalurFile, namaFile, (err) => {
-      if (err) console.error("Error unduh:", err);
-      // Hapus file sementara setelah terkirim
-      fs.unlink(jalurFile, () => {});
-    });
+    res.download(jalur, namaFile, () => fs.unlink(jalur, () => {}));
 
   } catch (err) {
-    console.error("Error Unduh Laporan:", err);
+    console.error("❌ Error Unduh Laporan:", err);
     res.redirect('/spv?pesan=gagal');
   }
 });
