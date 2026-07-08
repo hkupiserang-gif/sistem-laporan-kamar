@@ -31,6 +31,11 @@ app.use(session({
   cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 }
 }));
 
+// Rute untuk file manifest PWA
+app.get('/manifest.json', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'manifest.json'));
+});
+
 // Pesan notifikasi
 app.use((req, res, next) => {
   if (req.query.pesan === 'berhasil') {
@@ -172,7 +177,7 @@ app.post('/simpan-laporan', async (req, res) => {
   if (!req.session.user || req.session.user.peran !== 'RA') return res.redirect('/');
   try {
     const { tanggal, kamar, waktu_masuk, waktu_keluar, keterangan } = req.body;
-    const shift = 'Morning'; // Shift tetap
+    const shift = 'Morning';
     const status = 'HK';
 
     await pool.query(`
