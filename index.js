@@ -6,17 +6,19 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 8888;
 
-// ✅ KONEKSI DB KHUSUS RAILWAY
+// Koneksi Database KHUSUS RAILWAY
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
-pool.connect()
-  .then(() => console.log("✅ Database terhubung"))
-  .catch(err => console.error("❌ DB Error:", err));
+// Cek koneksi
+pool.connect((err) => {
+  if (err) console.error("❌ DB Gagal:", err);
+  else console.log("✅ DB Terhubung");
+});
 
-// KONFIGURASI
+// Konfigurasi Dasar
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
@@ -25,7 +27,7 @@ app.use(session({
   secret: 'horison-hotel-2026',
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 }
+  cookie: { secure: false, maxAge: 86400000 }
 }));
 
 // HALAMAN LOGIN
@@ -36,6 +38,10 @@ app.get('/', (req, res) => {
     if (req.session.user.peran === 'OT') return res.redirect('/ot');
   }
   res.render('login', { pesan: null });
+});
+
+app.get('/login', (req, res) => {
+  res.redirect('/');
 });
 
 app.post('/login', async (req, res) => {
@@ -56,12 +62,12 @@ app.post('/login', async (req, res) => {
       res.render('login', { pesan: '❌ Username atau sandi salah' });
     }
   } catch (err) {
-    console.error("Login:", err);
-    res.render('login', { pesan: '❌ Kesalahan sistem' });
+    console.error("Login Error:", err);
+    res.render('login', { pesan: '❌ Kesalahan sistem, coba lagi' });
   }
 });
 
-// PANEL SUPERVISOR
+// HALAMAN SUPERVISOR
 app.get('/spv', async (req, res) => {
   if (!req.session.user || req.session.user.peran !== 'SPV') return res.redirect('/');
   try {
@@ -78,27 +84,12 @@ app.get('/spv', async (req, res) => {
       daftarTugas: tugas.rows
     });
   } catch (err) {
-    console.error("SPV:", err);
-    res.redirect('/');
+    console.error("SPV Error:", err);
+    res.redirect('/?pesan=gagal');
   }
 });
 
-app.post('/tambah-tugas', async (req, res) => {
-  try {
-    const { tanggal, petugas, kamar, status_awal } = req.body;
-    await pool.query(`
-      INSERT INTO tugas (tanggal, kamar, petugas, status_awal)
-      VALUES ($1,$2,$3,$4)
-      ON CONFLICT (tanggal, kamar) DO UPDATE SET petugas=$3, status_awal=$4
-    `, [tanggal, kamar, petugas, status_awal]);
-    res.redirect('/spv?pesan=berhasil');
-  } catch (err) {
-    console.error("Tugas:", err);
-    res.redirect('/spv?pesan=gagal');
-  }
-});
-
-// PANEL ROOMBOY
+// HALAMAN ROOMBOY
 app.get('/ra', async (req, res) => {
   if (!req.session.user || req.session.user.peran !== 'RA') return res.redirect('/');
   try {
@@ -110,28 +101,8 @@ app.get('/ra', async (req, res) => {
     `, [hariIni, req.session.user.nama]);
     res.render('ra', { user: req.session.user, tugas: tugas.rows });
   } catch (err) {
-    console.error("RA:", err);
+    console.error("RA Error:", err);
     res.redirect('/');
-  }
-});
-
-app.post('/simpan-laporan', async (req, res) => {
-  try {
-    const { tanggal, kamar, waktu_masuk, waktu_keluar, keterangan } = req.body;
-    await pool.query(`
-      INSERT INTO laporan (tanggal, nomor_kamar, waktu_masuk, waktu_keluar, keterangan, petugas)
-      VALUES ($1,$2,$3,$4,$5,$6)
-      ON CONFLICT (tanggal, nomor_kamar) DO UPDATE
-      SET waktu_masuk=$3, waktu_keluar=$4, keterangan=$5
-    `, [tanggal, kamar, waktu_masuk||null, waktu_keluar||null, keterangan||'', req.session.user.nama]);
-
-    if (waktu_keluar) {
-      await pool.query("UPDATE tugas SET selesai=true WHERE tanggal=$1 AND kamar=$2", [tanggal, kamar]);
-    }
-    res.redirect('/ra?pesan=berhasil');
-  } catch (err) {
-    console.error("Laporan:", err);
-    res.redirect('/ra?pesan=gagal');
   }
 });
 
