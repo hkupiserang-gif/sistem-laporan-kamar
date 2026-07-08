@@ -7,18 +7,23 @@
   <style>
     * {margin:0; padding:0; box-sizing:border-box; font-family:Arial, sans-serif;}
     body {background:#f5f7fa;}
-    .header {background:#004b97; color:white; padding:14px 24px; display:flex; justify-content:space-between;}
-    .container {max-width:1200px; margin:20px auto; padding:0 16px;}
+    .header {background:#004b97; color:white; padding:14px 24px; display:flex; justify-content:space-between; align-items:center;}
+    .container {max-width:1250px; margin:20px auto; padding:0 16px;}
     .card {background:white; border-radius:8px; padding:20px; margin-bottom:20px; box-shadow:0 1px 3px #0002;}
-    h3 {margin-bottom:15px; padding-bottom:8px; border-bottom:1px solid #eee;}
+    h3 {margin-bottom:15px; padding-bottom:8px; border-bottom:1px solid #eee; font-size:16px;}
     .form-bar {display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:15px;}
     input, select, button {padding:6px 10px; border:1px solid #ddd; border-radius:4px; font-size:14px;}
     button {background:#0066cc; color:white; border:none; cursor:pointer;}
     button:hover {background:#0055aa;}
-    .kamar-grid {display:grid; grid-template-columns:repeat(auto-fill, minmax:190px, 1fr)); gap:10px; margin-bottom:15px;}
-    .kamar {border:1px solid #e2e8f0; border-radius:6px; padding:10px;}
+    .btn-export {background:#28a745;}
+    .btn-export:hover {background:#218838;}
+    .lantai-group {margin-bottom:20px; border:1px solid #e2e8f0; border-radius:6px; overflow:hidden;}
+    .lantai-header {background:#f1f5f9; padding:8px 12px; font-weight:bold; color:#333;}
+    .kamar-grid {display:grid; grid-template-columns:repeat(auto-fill, minmax:180px, 1fr)); gap:8px; padding:10px;}
+    .kamar {border:1px solid #e2e8f0; border-radius:4px; padding:8px; font-size:12px;}
     .kamar.dipakai {opacity:0.6; background:#f8fafc;}
-    table {width:100%; border-collapse:collapse; font-size:13px;}
+    .status-group {display:flex; flex-wrap:wrap; gap:3px; margin-top:5px;}
+    table {width:100%; border-collapse:collapse; font-size:13px; margin-top:10px;}
     th, td {padding:10px; border-bottom:1px solid #eee; text-align:left;}
     th {background:#f8fafc;}
     .sudah {color:green; font-weight:bold;}
@@ -26,6 +31,7 @@
     .pesan {padding:10px; border-radius:4px; margin-bottom:15px; text-align:center;}
     .sukses {background:#e6f9ed; color:#157c38;}
     .error {background:#ffe9e9; color:#b02020;}
+    a {text-decoration:none;}
   </style>
 </head>
 <body>
@@ -37,7 +43,7 @@
   <div class="container">
     <% if (pesan) { %><div class="pesan <%= pesan.tipe %>"><%= pesan.teks %></div><% } %>
 
-    <!-- 📅 FITUR LIHAT RIWAYAT -->
+    <!-- Atas: Riwayat + Unduh Excel -->
     <div class="card">
       <h3>📅 Lihat Riwayat / Back Date</h3>
       <form method="GET" class="form-bar">
@@ -46,53 +52,64 @@
         <label>No Kamar:</label>
         <input type="text" name="kamar" placeholder="contoh: 201" value="<%= cariKamar %>">
         <button type="submit">Tampilkan</button>
-        <a href="/spv" style="padding:6px 10px; background:#888; color:white; border-radius:4px; text-decoration:none">Reset</a>
+        <a href="/spv" class="btn" style="background:#888; padding:6px 10px; border-radius:4px; color:white;">Reset</a>
+        <a href="/unduh-excel?tanggal=<%= cariTanggal %>" class="btn btn-export" style="margin-left:auto;">📥 Unduh Excel</a>
       </form>
-      <p style="font-size:12px; color:#666;">Pilih tanggal atau ketik nomor kamar untuk melihat data lama</p>
+      <p style="font-size:12px; color:#666;">Pilih tanggal/kamar untuk melihat data, atau klik Unduh Excel untuk simpan laporan hari ini</p>
     </div>
 
-    <!-- ✍️ BUAT TUGAS -->
+    <!-- Buat Tugas Hari Ini -->
     <% if (cariTanggal === tanggal) { %>
     <div class="card">
-      <h3>Buat Tugas Hari Ini (<%= tanggal %>)</h3>
+      <h3>✍️ Buat Tugas Kebersihan - <%= tanggal %></h3>
       <form action="/tambah-tugas" method="POST">
         <div class="form-bar">
           <input type="hidden" name="tanggal" value="<%= tanggal %>">
           <label>Petugas:</label>
           <select name="petugas" required>
-            <option value="">-- Pilih --</option>
+            <option value="">-- Pilih Petugas --</option>
             <% daftarRA.forEach(r => { %><option value="<%= r.nama %>"><%= r.nama %></option><% }) %>
           </select>
-          <button type="submit">Simpan Tugas</button>
+          <button type="submit">Simpan Tugas Terpilih</button>
         </div>
-        <div class="kamar-grid">
-          <% daftarKamar.forEach(k => {
-            const sudah = kamarSudahAda.includes(k.nomor_kamar);
-          %>
-          <div class="kamar <%= sudah ? 'dipakai' : '' %>">
-            <div><strong><%= k.nomor_kamar %></strong></div>
-            <div style="font-size:12px; color:#555;"><%= k.lantai %> • <%= k.tipe_kamar %></div>
-            <label style="font-size:12px; display:block; margin:5px 0;">
-              <input type="checkbox" name="kamar" value="<%= k.nomor_kamar %>" <%= sudah ? 'disabled' : '' %>>
-              <%= sudah ? 'Sudah Dibagikan' : 'Pilih' %>
-            </label>
-            <div style="font-size:11px;">
-              <label><input type="radio" name="status_<%= k.nomor_kamar %>" value="VD" checked <%= sudah ? 'disabled' : '' %>> VD</label>
-              <label><input type="radio" name="status_<%= k.nomor_kamar %>" value="VC" <%= sudah ? 'disabled' : '' %>> VC</label>
-              <label><input type="radio" name="status_<%= k.nomor_kamar %>" value="OC" <%= sudah ? 'disabled' : '' %>> OC</label>
+
+        <% for (const lantai in kamarPerLantai) { %>
+        <div class="lantai-group">
+          <div class="lantai-header"><%= lantai %></div>
+          <div class="kamar-grid">
+            <% kamarPerLantai[lantai].forEach(k => {
+              const sudah = kamarSudahAda.includes(k.nomor_kamar);
+            %>
+            <div class="kamar <%= sudah ? 'dipakai' : '' %>">
+              <div><strong><%= k.nomor_kamar %></strong></div>
+              <div style="font-size:11px; color:#555; margin-bottom:4px;"><%= k.tipe_kamar %></div>
+              <label style="display:block; margin-bottom:4px;">
+                <input type="checkbox" name="kamar" value="<%= k.nomor_kamar %>" <%= sudah ? 'disabled' : '' %>>
+                <%= sudah ? 'Sudah Dibagi' : 'Pilih' %>
+              </label>
+              <div class="status-group">
+                <label><input type="radio" name="status_<%= k.nomor_kamar %>" value="VD" checked <%= sudah ? 'disabled' : '' %>> VD</label>
+                <label><input type="radio" name="status_<%= k.nomor_kamar %>" value="VC" <%= sudah ? 'disabled' : '' %>> VC</label>
+                <label><input type="radio" name="status_<%= k.nomor_kamar %>" value="OD" <%= sudah ? 'disabled' : '' %>> OD</label>
+                <label><input type="radio" name="status_<%= k.nomor_kamar %>" value="OC" <%= sudah ? 'disabled' : '' %>> OC</label>
+                <label><input type="radio" name="status_<%= k.nomor_kamar %>" value="VCU" <%= sudah ? 'disabled' : '' %>> VCU</label>
+                <label><input type="radio" name="status_<%= k.nomor_kamar %>" value="OM" <%= sudah ? 'disabled' : '' %>> OM</label>
+                <label><input type="radio" name="status_<%= k.nomor_kamar %>" value="OO" <%= sudah ? 'disabled' : '' %>> OO</label>
+              </div>
             </div>
+            <% }) %>
           </div>
-          <% }) %>
         </div>
+        <% } %>
       </form>
     </div>
     <% } %>
 
-    <!-- 📋 DAFTAR DATA / RIWAYAT -->
+    <!-- Daftar Tugas -->
     <div class="card">
-      <h3>📋 Data: <%= cariTanggal %> <%= cariKamar ? ' | Kamar ' + cariKamar : '' %></h3>
+      <h3>📋 Daftar Tugas & Laporan - <%= cariTanggal %></h3>
       <% if (daftarTugas.length === 0) { %>
-        <p style="text-align:center; padding:20px; color:#777;">Tidak ada data pada periode ini</p>
+        <p style="text-align:center; padding:20px; color:#777;">Belum ada data tugas pada tanggal ini</p>
       <% } else { %>
       <table>
         <thead>
@@ -101,7 +118,7 @@
             <th>Lantai</th>
             <th>Tipe</th>
             <th>Petugas</th>
-            <th>Status</th>
+            <th>Status Awal</th>
             <th>Jam Masuk</th>
             <th>Jam Keluar</th>
             <th>Selesai</th>
@@ -118,6 +135,39 @@
             <td><%= d.waktu_masuk || '-' %></td>
             <td><%= d.waktu_keluar || '-' %></td>
             <td class="<%= d.selesai ? 'sudah' : 'belum' %>"><%= d.selesai ? '✅ Ya' : '❌ Belum' %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <% } %>
+    </div>
+
+    <!-- Daftar Permintaan Tamu -->
+    <div class="card">
+      <h3>📞 Permintaan Tamu - <%= cariTanggal %></h3>
+      <% if (daftarPermintaan.length === 0) { %>
+        <p style="text-align:center; padding:20px; color:#777;">Belum ada permintaan tamu pada tanggal ini</p>
+      <% } else { %>
+      <table>
+        <thead>
+          <tr>
+            <th>Waktu</th>
+            <th>Kamar</th>
+            <th>Jenis Permintaan</th>
+            <th>Keterangan</th>
+            <th>Status</th>
+            <th>Dibuat Oleh</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% daftarPermintaan.forEach(p => { %>
+          <tr>
+            <td><%= p.waktu_masuk %></td>
+            <td><%= p.nomor_kamar %></td>
+            <td><%= p.jenis_permintaan %></td>
+            <td><%= p.keterangan || '-' %></td>
+            <td class="<%= p.status === 'Selesai' ? 'sudah' : 'belum' %>"><%= p.status %></td>
+            <td><%= p.dibuat_oleh %></td>
           </tr>
           <% }) %>
         </tbody>
