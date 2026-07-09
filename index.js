@@ -10,7 +10,7 @@ const app = express();
 const PORT = process.env.PORT || 8888;
 
 // ======================================
-// ✅ ZONA WAKTU PAKSA WIB
+// ✅ ZONA WAKTU WIB
 // ======================================
 process.env.TZ = 'Asia/Jakarta';
 
@@ -287,7 +287,9 @@ app.get('/spv', (req, res) => {
           const kamarPerLantai = {};
           daftarKamar.forEach(k => {
             if (!kamarPerLantai[k.lantai]) kamarPerLantai[k.lantai] = [];
-            kamarPerLantai[k.lantai].push(k);
+            // ✅ Cek apakah kamar sudah dibagikan agar tidak bisa dipilih lagi
+            const sudahAda = daftarTugas.some(t => t.kamar === k.nomor_kamar);
+            kamarPerLantai[k.lantai].push({ ...k, sudahAda });
           });
           res.render('spv', {
             user: req.session.user,
@@ -326,7 +328,7 @@ app.post('/tambah-tugas', (req, res) => {
 });
 
 // ======================================
-// ✅ HALAMAN RA
+// ✅ HALAMAN RA - PERBAIKAN WAKTU KELUAR
 // ======================================
 app.get('/ra', (req, res) => {
   if (!req.session.user || req.session.user.peran !== 'RA') return res.redirect('/');
@@ -473,13 +475,15 @@ app.post('/hapus-permintaan', (req, res) => {
 });
 
 // ======================================
-// ✅ PDF LAPORAN PETUGAS (TERPISAH, SESUAI FORMAT)
+// ✅ PDF LAPORAN PETUGAS - PERBAIKAN VALIDASI
 // ======================================
 app.get('/unduh-pdf-petugas', (req, res) => {
   const tanggal = req.query.tanggal || getTanggalWIB();
   const petugas = req.query.petugas || '';
 
-  if (!petugas) return res.send('❌ Pilih nama petugas terlebih dahulu');
+  if (!petugas || petugas === '') {
+    return res.send('❌ Pilih nama petugas terlebih dahulu sebelum mengunduh laporan');
+  }
 
   db.all(`
     SELECT 
@@ -497,12 +501,12 @@ app.get('/unduh-pdf-petugas', (req, res) => {
     WHERE t.tanggal = ? AND t.petugas = ?
     ORDER BY t.kamar
   `, [tanggal, petugas], (err, data) => {
-    if (err) return res.send('❌ Gagal ambil data');
-    if (!data || data.length === 0) return res.send('❌ Tidak ada data untuk petugas ini');
+    if (err) return res.send('❌ Gagal mengambil data laporan');
+    if (!data || data.length === 0) return res.send('❌ Tidak ada data tugas untuk petugas ini pada tanggal yang dipilih');
 
     const doc = new PDFDocument({ margin: 20, size: 'A4', layout: 'landscape' });
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="ROOMBOY_CONTROL_${petugas}_${tanggal}.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="ROOMBOY_CONTROL_${petugas.replace(/\s+/g, '_')}_${tanggal}.pdf"`);
     doc.pipe(res);
 
     // Header
@@ -582,7 +586,7 @@ app.get('/unduh-pdf-petugas', (req, res) => {
 });
 
 // ======================================
-// ✅ PDF PERMINTAAN TAMU (TERPISAH)
+// ✅ PDF PERMINTAAN TAMU
 // ======================================
 app.get('/unduh-pdf-permintaan', (req, res) => {
   const tanggal = req.query.tanggal || getTanggalWIB();
@@ -590,8 +594,8 @@ app.get('/unduh-pdf-permintaan', (req, res) => {
     SELECT nomor_kamar, jenis_permintaan, keterangan, status, waktu_masuk, waktu_selesai, dibuat_oleh
     FROM permintaan_tamu WHERE tanggal = ? ORDER BY nomor_kamar
   `, [tanggal], (err, data) => {
-    if (err) return res.send('❌ Gagal ambil data');
-    if (!data || data.length === 0) return res.send('❌ Tidak ada permintaan hari ini');
+    if (err) return res.send('❌ Gagal mengambil data permintaan');
+    if (!data || data.length === 0) return res.send('❌ Tidak ada permintaan tamu pada tanggal ini');
 
     const doc = new PDFDocument({ margin: 25, size: 'A4' });
     res.setHeader('Content-Type', 'application/pdf');
@@ -609,12 +613,13 @@ app.get('/unduh-pdf-permintaan', (req, res) => {
     doc.text('No', 25, y, { width: 30 });
     doc.text('Kamar', 55, y, { width: 50 });
     doc.text('Permintaan', 110, y, { width: 150 });
-    doc.text('Waktu', 260, y, { width: 60 });
-    doc.text('Status', 320, y, { width: 80 });
-    doc.text('Dibuat Oleh', 400, y, { width: 90 });
+    doc.text('Waktu Masuk', 260, y, { width: 60 });
+    doc.text('Waktu Selesai', 330, y, { width: 70 });
+    doc.text('Status', 410, y, { width: 70 });
+    doc.text('Dibuat Oleh', 490, y, { width: 80 });
 
     y += 16;
-    doc.moveTo(25, y).lineTo(520, y).stroke();
+    doc.moveTo(25, y).lineTo(570, y).stroke();
     y += 8;
 
     doc.font('Helvetica').fontSize(10);
@@ -624,8 +629,9 @@ app.get('/unduh-pdf-permintaan', (req, res) => {
       doc.text(row.nomor_kamar, 55, y, { width: 50 });
       doc.text(`${row.jenis_permintaan} ${row.keterangan ? `(${row.keterangan})` : ''}`, 110, y, { width: 150 });
       doc.text(row.waktu_masuk, 260, y, { width: 60 });
-      doc.text(row.status, 320, y, { width: 80 });
-      doc.text(row.dibuat_oleh || '-', 400, y, { width: 90 });
+      doc.text(row.waktu_selesai || '-', 330, y, { width: 70 });
+      doc.text(row.status, 410, y, { width: 70 });
+      doc.text(row.dibuat_oleh || '-', 490, y, { width: 80 });
       y += 18;
     });
 
@@ -650,14 +656,14 @@ app.get('/unduh-excel', (req, res) => {
   query += ` ORDER BY t.kamar`;
 
   db.all(query, param, (err, data) => {
-    if (err) return res.send('❌ Gagal ambil data');
-    if (!data.length) return res.send('❌ Tidak ada data');
+    if (err) return res.send('❌ Gagal mengambil data');
+    if (!data.length) return res.send('❌ Tidak ada data yang tersedia');
     try {
       const csv = parse(data, { delimiter: ';', quote: '"' });
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="LAPORAN_${petugas || 'SEMUA'}_${tanggal}.csv"`);
       res.send('\uFEFF' + csv);
-    } catch (e) { res.send('❌ Gagal buat Excel'); }
+    } catch (e) { res.send('❌ Gagal membuat file Excel'); }
   });
 });
 
@@ -666,7 +672,7 @@ app.get('/logout', (req, res) => {
 });
 
 // ======================================
-// ✅ JALANKAN SERVER (SESUNGGUHNYA UNTUK RAILWAY)
+// ✅ JALANKAN SERVER
 // ======================================
 app.listen(PORT, () => {
   console.log(`✅ Server berjalan di port ${PORT} | Waktu sistem: ${getWaktuWIB()}`);
