@@ -617,7 +617,11 @@ app.get('/unduh-excel', (req, res) => {
   });
 });
 
-app.get('/logout', (req, res) => req.session.destroy(() => res.redirect('/'));
+app.get('/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.redirect('/');
+  });
+});
 
 // ======================================
 // ✅ JALANKAN SERVER
