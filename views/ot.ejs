@@ -5,31 +5,72 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Panel Order Taker - Horison Hotel</title>
   <style>
-    * {margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', sans-serif;}
-    body {background-color: #f8fafc;}
-    .header {background-color: #004b97; color: white; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
-    .header h2 {font-size: 18px; font-weight: 600;}
-    .header a {color: white; text-decoration: none; margin-left: 12px;}
-    .waktu-live {font-size: 14px; background: #003a7a; padding: 4px 10px; border-radius: 4px;}
-    .logo-container {text-align: center; margin: 20px 0;}
-    .logo {font-size: 32px; font-weight: bold; color: #002b5c; letter-spacing: 1px;}
-    .sub-logo {font-size: 14px; color: #555; margin-top: 4px;}
-    .container {max-width: 1000px; margin: 0 auto; padding: 0 16px 30px;}
-    .pesan {padding: 10px; border-radius: 4px; margin-bottom: 16px; font-size: 14px; text-align: center;}
-    .pesan.error {background:#ffe9e9; color:#b02020; border:1px solid #f8cccc;}
-    .pesan.sukses {background:#e6f9ed; color:#157c38; border:1px solid #c8f0d6;}
-    .card {background: white; border-radius: 6px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 24px;}
-    .card h3 {font-size: 16px; color: #222; margin-bottom: 16px; font-weight: 600; padding-bottom: 8px; border-bottom: 1px solid #eee;}
-    input, select, textarea {width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; margin-bottom: 12px;}
-    .btn {padding: 10px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500;}
-    .btn-biru {background: #004b97; color: white;}
-    .btn-hijau {background: #28a745; color: white;}
-    table {width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px;}
-    th, td {padding: 10px 8px; text-align: center; border: 1px solid #e2e8f0; vertical-align: middle;}
-    th {background-color: #f1f5f9; font-weight: 600; color: #333;}
-    .status-badge {padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold;}
-    .status-proses {background: #fff3cd; color: #856404;}
-    .status-selesai {background: #d4edda; color: #155724;}
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+    body { background-color: #f8fafc; }
+    .header {
+      background-color: #004b97; color: white; padding: 12px 24px;
+      display: flex; justify-content: space-between; align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .header h2 { font-size: 18px; font-weight: 600; }
+    .header a { color: white; text-decoration: none; margin-left: 12px; }
+    .waktu-live {
+      font-size: 14px; background: #003a7a; padding: 4px 10px; border-radius: 4px;
+      font-variant-numeric: tabular-nums;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px 16px; }
+    .pesan {
+      padding: 10px; border-radius: 4px; margin-bottom: 16px; font-size: 14px;
+      text-align: center;
+    }
+    .pesan.error { background:#ffe9e9; color:#b02020; border:1px solid #f8cccc; }
+    .pesan.sukses { background:#e6f9ed; color:#157c38; border:1px solid #c8f0d6; }
+    .card {
+      background: white; border-radius: 6px; padding: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 24px;
+    }
+    .card h3 {
+      font-size: 16px; color: #222; margin-bottom: 16px; font-weight: 600;
+      padding-bottom: 8px; border-bottom: 1px solid #eee;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .form-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px; margin-bottom: 15px;
+    }
+    input, select, textarea {
+      padding: 9px 12px; border: 1px solid #ddd; border-radius: 4px;
+      font-size: 14px; width: 100%;
+    }
+    textarea { resize: vertical; min-height: 70px; }
+    label {
+      font-size: 13px; color: #444; margin-bottom: 5px;
+      display: inline-block;
+    }
+    .btn {
+      padding: 9px 16px; border: none; border-radius: 4px; cursor: pointer;
+      font-size: 14px; font-weight: 500; text-decoration: none;
+      display: inline-block;
+    }
+    .btn-biru { background: #004b97; color: white; }
+    .btn-hijau { background: #28a745; color: white; }
+    .btn-kuning { background: #f59e0b; color: white; }
+    .btn-merah { background: #dc2626; color: white; }
+    table {
+      width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 12px;
+    }
+    th, td {
+      padding: 11px 10px; text-align: left; border: 1px solid #e2e8f0;
+      vertical-align: middle;
+    }
+    th { background-color: #f1f5f9; font-weight: 600; color: #333; }
+    .status-badge {
+      padding: 5px 10px; border-radius: 12px; font-size: 12px; font-weight: bold;
+    }
+    .status-pinjam { background: #fff3cd; color: #856404; }
+    .status-kembali { background: #d4edda; color: #155724; }
+    .aksi { display: flex; gap: 6px; flex-wrap: wrap; }
+    .aksi button, .aksi a { padding: 5px 8px; font-size: 12px; }
   </style>
 </head>
 <body>
@@ -42,77 +83,95 @@
   </div>
 
   <div class="container">
-    <div class="logo-container">
-      <div class="logo">HORISON</div>
-      <div class="sub-logo">TC-UPI SERANG • HOTEL & CONVENTION</div>
-    </div>
-
-    <% if (pesan) { %><div class="pesan <%= pesan.tipe %>"><%= pesan.teks %></div><% } %>
+    <% if (pesan) { %>
+      <div class="pesan <%= pesan.tipe %>"><%= pesan.teks %></div>
+    <% } %>
 
     <!-- Form Tambah Permintaan -->
     <div class="card">
-      <h3>Tambah Permintaan Tamu</h3>
+      <h3>📝 Tambah Permintaan Tamu</h3>
       <form action="/tambah-permintaan" method="POST">
-        <label>No Kamar:</label>
-        <select name="nomor_kamar" required>
-          <option value="">-- Pilih Kamar --</option>
-          <% daftarKamar.forEach(k => { %>
-            <option value="<%= k.nomor_kamar %>"><%= k.nomor_kamar %> - <%= k.tipe_kamar %></option>
-          <% }) %>
-        </select>
-
-        <label>Jenis Permintaan:</label>
-        <input type="text" name="jenis_permintaan" placeholder="Contoh: Handuk Tambahan, Air Mineral" required>
-
-        <label>Keterangan:</label>
-        <textarea name="keterangan" rows="3" placeholder="Tambahan informasi jika ada"></textarea>
-
+        <div class="form-grid">
+          <div>
+            <label>No Kamar:</label>
+            <select name="nomor_kamar" required>
+              <option value="">-- Pilih Kamar --</option>
+              <% daftarKamar.forEach(k => { %>
+                <option value="<%= k.nomor_kamar %>"><%= k.nomor_kamar %> - <%= k.lantai %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div>
+            <label>Jenis Permintaan:</label>
+            <select name="jenis_permintaan" required>
+              <option value="">-- Pilih --</option>
+              <option value="Handuk">Handuk</option>
+              <option value="Selimut / Duvet">Selimut / Duvet</option>
+              <option value="Air Mineral">Air Mineral</option>
+              <option value="Teh & Kopi">Teh & Kopi</option>
+              <option value="Peralatan Mandi">Peralatan Mandi</option>
+              <option value="Setrika & Papan Setrika">Setrika & Papan Setrika</option>
+              <option value="Sambungan Listrik">Sambungan Listrik</option>
+              <option value="Bantal Tambahan">Bantal Tambahan</option>
+              <option value="Lainnya">Lainnya</option>
+            </select>
+          </div>
+          <div style="grid-column: span 2;">
+            <label>Keterangan / Jumlah:</label>
+            <textarea name="keterangan" placeholder="Contoh: 2 buah, ukuran besar, dll"></textarea>
+          </div>
+        </div>
         <button type="submit" class="btn btn-biru">Simpan Permintaan</button>
       </form>
     </div>
 
     <!-- Daftar Permintaan -->
     <div class="card">
-      <h3>Daftar Permintaan Hari Ini - <%= tanggal %></h3>
+      <h3>
+        📋 Daftar Permintaan Hari Ini - <%= tanggal %>
+        <a href="/unduh-pdf-ot?tanggal=<%= tanggal %>" class="btn btn-hijau">📄 Unduh Laporan PDF</a>
+      </h3>
+
       <% if (daftarPermintaan.length === 0) { %>
-        <p style="text-align:center; padding:20px; color:#777;">Belum ada permintaan masuk hari ini</p>
+        <p style="text-align:center; padding:40px; color:#777;">Belum ada permintaan tamu yang dicatat hari ini</p>
       <% } else { %>
       <table>
         <thead>
           <tr>
-            <th>No Kamar</th>
+            <th>No</th>
+            <th>Kamar</th>
             <th>Permintaan</th>
-            <th>Keterangan</th>
             <th>Waktu Masuk</th>
-            <th>Waktu Selesai</th>
             <th>Status</th>
+            <th>Waktu Selesai</th>
             <th>Aksi</th>
           </tr>
         </thead>
         <tbody>
-          <% daftarPermintaan.forEach(p => { %>
+          <% daftarPermintaan.forEach((item, index) => { %>
           <tr>
-            <td><strong><%= p.nomor_kamar %></strong></td>
-            <td><%= p.jenis_permintaan %></td>
-            <td><%= p.keterangan || '-' %></td>
-            <td><%= p.waktu_masuk %></td>
-            <td><%= p.waktu_selesai || '-' %></td>
+            <td><%= index + 1 %></td>
+            <td><strong><%= item.nomor_kamar %></strong></td>
+            <td><%= item.jenis_permintaan %><br><small style="color:#666;"><%= item.keterangan || '-' %></small></td>
+            <td><%= item.waktu_masuk || '-' %></td>
             <td>
-              <% if (p.status === 'Diproses') { %>
-                <span class="status-badge status-proses">Diproses</span>
-              <% } else { %>
-                <span class="status-badge status-selesai">Selesai</span>
-              <% } %>
+              <span class="status-badge <%= item.status === 'Dipinjam Tamu' ? 'status-pinjam' : 'status-kembali' %>">
+                <%= item.status %>
+              </span>
             </td>
-            <td>
-              <% if (p.status === 'Diproses') { %>
-                <form action="/selesai-permintaan" method="POST">
-                  <input type="hidden" name="id" value="<%= p.id %>">
-                  <button type="submit" class="btn btn-hijau">Selesai</button>
-                </form>
-              <% } else { %>
-                ✅
+            <td><%= item.waktu_selesai || '-' %></td>
+            <td class="aksi">
+              <% if (item.status === 'Dipinjam Tamu') { %>
+              <form action="/ubah-status-permintaan" method="POST" style="display:inline;">
+                <input type="hidden" name="id" value="<%= item.id %>">
+                <input type="hidden" name="status" value="Dikembalikan">
+                <button type="submit" class="btn btn-hijau">Selesai</button>
+              </form>
               <% } %>
+              <form action="/hapus-permintaan" method="POST" style="display:inline;" onsubmit="return confirm('Yakin ingin menghapus data ini?')">
+                <input type="hidden" name="id" value="<%= item.id %>">
+                <button type="submit" class="btn btn-merah">Hapus</button>
+              </form>
             </td>
           </tr>
           <% }) %>
@@ -122,14 +181,14 @@
     </div>
   </div>
 
+  <!-- Script Jam Berjalan -->
   <script>
-    // Update waktu berjalan setiap detik
     setInterval(() => {
-      const now = new Date();
-      const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
-      const jam = wib.getHours().toString().padStart(2, '0');
-      const menit = wib.getMinutes().toString().padStart(2, '0');
-      document.getElementById('jamSekarang').textContent = `${jam}:${menit}`;
+      const jakartaTime = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+      const jam = String(jakartaTime.getHours()).padStart(2, '0');
+      const menit = String(jakartaTime.getMinutes()).padStart(2, '0');
+      const detik = String(jakartaTime.getSeconds()).padStart(2, '0');
+      document.getElementById('jamSekarang').textContent = `${jam}:${menit}:${detik}`;
     }, 1000);
   </script>
 </body>
