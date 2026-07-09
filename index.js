@@ -159,11 +159,14 @@ db.serialize(() => {
         ['504','Lantai 5A','Deluxe'],['505','Lantai 5A','Deluxe'],['506','Lantai 5A','Deluxe'],
         ['507','Lantai 5A','Deluxe'],['508','Lantai 5C','Deluxe'],['509','Lantai 5C','Deluxe'],
         ['510','Lantai 5C','Deluxe'],['511','Lantai 5C','Deluxe'],['512','Lantai 5C','Deluxe'],
-        ['513','Lantai 5C','Deluxe'],['514','Lantai 5C','Deluxe'],['515','Lantai 5C','Deluxe'],
-        ['516','Lantai 5C','Deluxe'],['517','Lantai 5C','Deluxe'],['518','Lantai 5C','Deluxe'],
-        ['519','Lantai 5C','Deluxe'],['520','Lantai 5C','Deluxe']
+        ['513','Lantai 5C','Deluxe'],['514','Lantai 5C','Deluxe'], // ✅ Kamar 514 DITAMBAHKAN
+        ['515','Lantai 5C','Deluxe'],['516','Lantai 5C','Deluxe'],['517','Lantai 5C','Deluxe'],
+        ['518','Lantai 5C','Deluxe'],['519','Lantai 5C','Deluxe'],['520','Lantai 5C','Deluxe']
       ];
       daftarKamar.forEach(k => db.run(`INSERT OR IGNORE INTO kamar VALUES (?, ?, ?, 1)`, k));
+    } else {
+      // Tambahkan kamar 514 jika database sudah ada tapi belum terdaftar
+      db.run(`INSERT OR IGNORE INTO kamar (nomor_kamar, lantai, tipe_kamar, aktif) VALUES ('514', 'Lantai 5C', 'Deluxe', 1)`);
     }
   });
 
@@ -176,7 +179,8 @@ db.serialize(() => {
     selesai INTEGER DEFAULT 0,
     sudah_dibagikan INTEGER DEFAULT 0,
     siap_dicek INTEGER DEFAULT 0,
-    PRIMARY KEY (tanggal, kamar)
+    PRIMARY KEY (tanggal, kamar),
+    FOREIGN KEY (kamar) REFERENCES kamar(nomor_kamar) ON DELETE CASCADE
   )`);
 
   // Tambah kolom jika belum ada
@@ -225,7 +229,8 @@ db.serialize(() => {
     pensil INTEGER DEFAULT 0,
     note_pad INTEGER DEFAULT 0,
     petugas TEXT,
-    PRIMARY KEY (tanggal, nomor_kamar)
+    PRIMARY KEY (tanggal, nomor_kamar),
+    FOREIGN KEY (nomor_kamar) REFERENCES kamar(nomor_kamar) ON DELETE CASCADE
   )`);
 
   // Tabel Permintaan Tamu
@@ -238,7 +243,8 @@ db.serialize(() => {
     status TEXT DEFAULT 'Dipinjam Tamu',
     waktu_masuk TEXT,
     waktu_selesai TEXT,
-    dibuat_oleh TEXT
+    dibuat_oleh TEXT,
+    FOREIGN KEY (nomor_kamar) REFERENCES kamar(nomor_kamar) ON DELETE CASCADE
   )`);
 });
 
@@ -252,6 +258,7 @@ const buatTugasBaruHariIni = () => {
   db.get(`SELECT 1 FROM tugas WHERE tanggal = ? LIMIT 1`, [tanggalSekarang], (err, ada) => {
     if (!ada) {
       console.log(`📅 Membuat tugas baru: ${tanggalSekarang}`);
+      // ✅ Hanya ambil kamar yang terdaftar dan aktif
       db.all(`SELECT nomor_kamar FROM kamar WHERE aktif = 1`, [], (err, daftarKamar) => {
         if (err) return console.error("❌ Gagal ambil kamar:", err);
         daftarKamar.forEach(k => {
@@ -318,7 +325,7 @@ app.post('/login', (req, res) => {
 });
 
 // ======================================
-// ✅ HALAMAN SUPERVISOR
+// ✅ HALAMAN SUPERVISOR (DIPERBAIKI)
 // ======================================
 app.get('/spv', (req, res) => {
   if (!req.session.user || req.session.user.peran !== 'SPV') return res.redirect('/');
@@ -328,21 +335,8 @@ app.get('/spv', (req, res) => {
 
   db.all(`SELECT nomor_kamar, lantai, tipe_kamar FROM kamar WHERE aktif = 1 ORDER BY nomor_kamar`, [], (err, daftarKamar) => {
     db.all(`SELECT nama FROM pengguna WHERE peran = 'RA' AND aktif = 1 ORDER BY nama`, [], (err, daftarRA) => {
-      // Ambil kamar yang BELUM dibagikan
-      let queryBelum = `
-        SELECT t.*, k.lantai, k.tipe_kamar,
-               IFNULL(l.waktu_masuk, '-') AS waktu_masuk,
-               IFNULL(l.waktu_keluar, '-') AS waktu_keluar
-        FROM tugas t
-        JOIN kamar k ON t.kamar = k.nomor_kamar
-        LEFT JOIN laporan l ON t.tanggal = l.tanggal AND t.kamar = l.nomor_kamar
-        WHERE t.tanggal = ? AND t.sudah_dibagikan = 0
-      `;
-      const paramBelum = [cariTanggal];
-      if (cariKamar) { queryBelum += ` AND t.kamar = ?`; paramBelum.push(cariKamar); }
-      queryBelum += ` ORDER BY t.kamar`;
 
-      // Ambil kamar yang SUDAH dibagikan, dikelompokkan per RA
+      // ✅ HANYA AMBIL KAMAR YANG SUDAH DIBAGIKAN
       let querySudah = `
         SELECT t.*, k.lantai, k.tipe_kamar,
                IFNULL(l.waktu_masuk, '-') AS waktu_masuk,
@@ -356,33 +350,30 @@ app.get('/spv', (req, res) => {
       if (cariKamar) { querySudah += ` AND t.kamar = ?`; paramSudah.push(cariKamar); }
       querySudah += ` ORDER BY t.petugas, t.kamar`;
 
-      db.all(queryBelum, paramBelum, (err, daftarBelumDibagikan) => {
-        db.all(querySudah, paramSudah, (err, daftarSudahDibagikan) => {
-          // Kelompokkan per RA
-          const perRA = {};
-          daftarSudahDibagikan.forEach(tugas => {
-            if (!perRA[tugas.petugas]) perRA[tugas.petugas] = [];
-            perRA[tugas.petugas].push(tugas);
-          });
+      db.all(querySudah, paramSudah, (err, daftarSudahDibagikan) => {
+        // Kelompokkan per RA
+        const perRA = {};
+        daftarSudahDibagikan.forEach(tugas => {
+          if (!perRA[tugas.petugas]) perRA[tugas.petugas] = [];
+          perRA[tugas.petugas].push(tugas);
+        });
 
-          db.all(`SELECT * FROM permintaan_tamu WHERE tanggal = ? ORDER BY waktu_masuk DESC`, [cariTanggal], (err, daftarPermintaan) => {
-            const kamarPerLantai = {};
-            daftarKamar.forEach(k => {
-              if (!kamarPerLantai[k.lantai]) kamarPerLantai[k.lantai] = [];
-              kamarPerLantai[k.lantai].push(k);
-            });
-            res.render('spv', {
-              user: req.session.user,
-              tanggal: hariIni,
-              cariTanggal,
-              cariKamar,
-              kamarPerLantai,
-              daftarRA,
-              daftarBelumDibagikan,
-              daftarSudahDibagikan: perRA,
-              daftarPermintaan,
-              pesan: res.locals.pesan
-            });
+        db.all(`SELECT * FROM permintaan_tamu WHERE tanggal = ? ORDER BY waktu_masuk DESC`, [cariTanggal], (err, daftarPermintaan) => {
+          const kamarPerLantai = {};
+          daftarKamar.forEach(k => {
+            if (!kamarPerLantai[k.lantai]) kamarPerLantai[k.lantai] = [];
+            kamarPerLantai[k.lantai].push(k);
+          });
+          res.render('spv', {
+            user: req.session.user,
+            tanggal: hariIni,
+            cariTanggal,
+            cariKamar,
+            kamarPerLantai,
+            daftarRA,
+            daftarSudahDibagikan: perRA,
+            daftarPermintaan,
+            pesan: res.locals.pesan
           });
         });
       });
@@ -400,14 +391,25 @@ app.post('/tambah-tugas', (req, res) => {
 
   if (total === 0) return res.redirect('/spv?pesan=gagal');
 
-  daftarKamar.forEach((k, idx) => {
-    const status = daftarStatus[idx] || 'VD';
-    db.run(`INSERT OR REPLACE INTO tugas 
-      (tanggal, kamar, petugas, status_awal, selesai, sudah_dibagikan, siap_dicek) 
-      VALUES (?, ?, ?, ?, ?, 1, 0)`, 
-      [tanggal, k, petugas, status, 0], 
-      () => { if (++selesai === total) res.redirect('/spv?pesan=berhasil'); }
-    );
+  // ✅ Validasi kamar terdaftar sebelum disimpan
+  const tempatkanTugas = () => {
+    daftarKamar.forEach((k, idx) => {
+      const status = daftarStatus[idx] || 'VD';
+      db.run(`INSERT OR REPLACE INTO tugas 
+        (tanggal, kamar, petugas, status_awal, selesai, sudah_dibagikan, siap_dicek) 
+        VALUES (?, ?, ?, ?, ?, 1, 0)`, 
+        [tanggal, k, petugas, status, 0], 
+        () => { if (++selesai === total) res.redirect('/spv?pesan=berhasil'); }
+      );
+    });
+  };
+
+  // Cek semua kamar ada di database
+  db.all(`SELECT nomor_kamar FROM kamar WHERE nomor_kamar IN (${daftarKamar.map(() => '?').join(',')})`, daftarKamar, (err, hasil) => {
+    if (hasil.length !== daftarKamar.length) {
+      return res.redirect('/spv?pesan=gagal&teks=Ada kamar yang tidak terdaftar');
+    }
+    tempatkanTugas();
   });
 });
 
@@ -457,6 +459,7 @@ app.get('/ra', (req, res) => {
            IFNULL(l.pensil, 0) AS pensil,
            IFNULL(l.note_pad, 0) AS note_pad
     FROM tugas t
+    JOIN kamar k ON t.kamar = k.nomor_kamar
     LEFT JOIN laporan l ON t.tanggal = l.tanggal AND t.kamar = l.nomor_kamar
     WHERE t.tanggal = ? AND t.petugas = ? AND t.sudah_dibagikan = 1 ORDER BY t.kamar
   `, [hariIni, req.session.user.nama], (err, daftarTugas) => {
@@ -561,12 +564,16 @@ app.post('/tambah-permintaan', (req, res) => {
 
   if (!nomor_kamar || !jenis_permintaan) return res.redirect('/ot?pesan=gagal');
 
-  db.run(`INSERT INTO permintaan_tamu 
-    (tanggal, nomor_kamar, jenis_permintaan, keterangan, waktu_masuk, dibuat_oleh, status)
-    VALUES (?, ?, ?, ?, ?, ?, 'Dipinjam Tamu')`,
-    [hariIni, nomor_kamar, jenis_permintaan, keterangan || '', waktuMasuk, req.session.user.nama],
-    err => err ? res.redirect('/ot?pesan=gagal') : res.redirect('/ot?pesan=berhasil')
-  );
+  // Validasi kamar terdaftar
+  db.get(`SELECT 1 FROM kamar WHERE nomor_kamar = ?`, [nomor_kamar], (err, ada) => {
+    if (!ada) return res.redirect('/ot?pesan=gagal&teks=Kamar tidak terdaftar');
+    db.run(`INSERT INTO permintaan_tamu 
+      (tanggal, nomor_kamar, jenis_permintaan, keterangan, waktu_masuk, dibuat_oleh, status)
+      VALUES (?, ?, ?, ?, ?, ?, 'Dipinjam Tamu')`,
+      [hariIni, nomor_kamar, jenis_permintaan, keterangan || '', waktuMasuk, req.session.user.nama],
+      err => err ? res.redirect('/ot?pesan=gagal') : res.redirect('/ot?pesan=berhasil')
+    );
+  });
 });
 
 app.post('/ubah-status-permintaan', (req, res) => {
