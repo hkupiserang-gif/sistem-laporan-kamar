@@ -9,37 +9,36 @@ const app = express();
 const PORT = process.env.PORT || 8888;
 
 // ======================================
-// ✅ FUNGSI WAKTU WIB 100% AKURAT (Asia/Jakarta)
+// ✅ WAKTU WIB PALING STABIL
 // ======================================
+process.env.TZ = 'Asia/Jakarta'; // Paksa zona waktu dari awal
+
 const getWaktuWIB = () => {
   const now = new Date();
-  return new Intl.DateTimeFormat('id-ID', {
-    timeZone: 'Asia/Jakarta',
+  return now.toLocaleTimeString('id-ID', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
     hour12: false
-  }).format(now);
+  });
 };
 
 const getWaktuWIBJamMenit = () => {
   const now = new Date();
-  return new Intl.DateTimeFormat('id-ID', {
-    timeZone: 'Asia/Jakarta',
+  return now.toLocaleTimeString('id-ID', {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false
-  }).format(now);
+  });
 };
 
 const getTanggalWIB = () => {
   const now = new Date();
-  return new Intl.DateTimeFormat('id-ID', {
-    timeZone: 'Asia/Jakarta',
+  return now.toLocaleDateString('id-ID', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit'
-  }).format(now).split('/').reverse().join('-');
+  }).split('/').reverse().join('-');
 };
 
 // ======================================
@@ -123,7 +122,7 @@ db.serialize(() => {
     tanggal TEXT,
     kamar TEXT,
     petugas TEXT,
-    status_awal TEXT,
+    status_awal TEXT DEFAULT 'VD',
     selesai INTEGER DEFAULT 0,
     PRIMARY KEY (tanggal, kamar)
   )`);
@@ -162,12 +161,12 @@ db.serialize(() => {
 
   db.run(`CREATE TABLE IF NOT EXISTS permintaan_tamu (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tanggal TEXT DEFAULT (DATE('now')),
+    tanggal TEXT,
     nomor_kamar TEXT,
     jenis_permintaan TEXT,
     keterangan TEXT,
     status TEXT DEFAULT 'Diproses',
-    waktu_masuk TEXT DEFAULT (TIME('now')),
+    waktu_masuk TEXT,
     waktu_selesai TEXT,
     dibuat_oleh TEXT
   )`);
@@ -272,7 +271,7 @@ app.get('/spv', (req, res) => {
 app.post('/tambah-tugas', (req, res) => {
   const { tanggal, petugas, kamar, status_awal } = req.body;
   const daftarKamar = Array.isArray(kamar) ? kamar : [kamar];
-  const daftarStatus = Array.isArray(status_awal) ? status_awal : [status_awal];
+  const daftarStatus = Array.isArray(status_awal) ? status_awal : [status_awal || 'VD'];
   
   let selesai = 0;
   const total = daftarKamar.length;
@@ -388,8 +387,10 @@ app.get('/ot', (req, res) => {
 });
 
 app.post('/tambah-permintaan', (req, res) => {
-  db.run(`INSERT INTO permintaan_tamu (nomor_kamar, jenis_permintaan, keterangan, dibuat_oleh) VALUES (?, ?, ?, ?)`,
-    [req.body.nomor_kamar, req.body.jenis_permintaan, req.body.keterangan || '', req.session.user.nama], () => res.redirect('/ot?pesan=berhasil'));
+  const hariIni = getTanggalWIB();
+  const waktuSekarang = getWaktuWIBJamMenit();
+  db.run(`INSERT INTO permintaan_tamu (tanggal, nomor_kamar, jenis_permintaan, keterangan, waktu_masuk, dibuat_oleh) VALUES (?, ?, ?, ?, ?, ?)`,
+    [hariIni, req.body.nomor_kamar, req.body.jenis_permintaan, req.body.keterangan || '', waktuSekarang, req.session.user.nama], () => res.redirect('/ot?pesan=berhasil'));
 });
 
 app.post('/selesai-permintaan', (req, res) => {
@@ -481,17 +482,14 @@ app.get('/unduh-pdf', (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="ROOMBOY_CONTROL_SHEET_${tanggal}.pdf"`);
     doc.pipe(res);
 
-    // Header Utama
     doc.fontSize(18).font('Helvetica-Bold').text('HORISON', { align: 'center' });
     doc.fontSize(14).text('HOTEL & CONVENTION', { align: 'center' });
     doc.fontSize(16).font('Helvetica-Bold').text('ROOMBOY CONTROL SHEET', { align: 'center', underline: true });
     doc.moveDown(1);
 
-    // Info Lembar
     doc.fontSize(10).font('Helvetica').text(`SHIFT: Morning    |    FLOOR/SECTION: ${data[0]?.lantai || 'All Floors'}    |    DATE: ${tanggal}`, { align: 'left' });
     doc.moveDown(1);
 
-    // Judul Kolom
     doc.fontSize(9).font('Helvetica-Bold');
     let y = doc.y;
     doc.text('NO', 20, y, { width: 25, align: 'center' });
@@ -522,7 +520,6 @@ app.get('/unduh-pdf', (req, res) => {
     doc.moveTo(20, y).lineTo(730, y).stroke();
     y += 8;
 
-    // Isi Data
     doc.fontSize(9).font('Helvetica');
     data.forEach((row, idx) => {
       if (y > 520) { doc.addPage(); y = 40; }
@@ -552,14 +549,13 @@ app.get('/unduh-pdf', (req, res) => {
       y += 15;
     });
 
-    // Keterangan Status & Tanda Tangan
     y += 15;
     doc.fontSize(8);
     doc.text('KETERANGAN STATUS:', 20, y);
     y += 12;
     doc.text('VD = Vacant Dirty   |   VC = Vacant Clean   |   OD = Occupied Dirty   |   OC = Occupied Clean   |   VCU = Vacant Clean Unchecked', 20, y);
     y += 12;
-    doc.text('OOO = Out of Order   |   OM = House Use   |   DND = Do Not Disturb   |   ED = Expected Departure   |   EA = Expected Arrival', 20, y);
+    doc.text('OOO = Out of Order   |   OM = House Use   |   DND = Do Not Disturb', 20, y);
     y += 20;
     doc.text('PREPARED BY: ________________________        CHECKED BY: ________________________', 20, y);
 
