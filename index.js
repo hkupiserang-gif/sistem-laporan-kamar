@@ -4,12 +4,13 @@ const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
 const { parse } = require('json2csv');
 const PDFDocument = require('pdfkit');
+const cron = require('node-cron');
 
 const app = express();
 const PORT = process.env.PORT || 8888;
 
 // ======================================
-// ✅ ZONA WAKTU PAKSA WIB (Asia/Jakarta)
+// ✅ ZONA WAKTU PAKSA WIB
 // ======================================
 process.env.TZ = 'Asia/Jakarta';
 
@@ -45,7 +46,7 @@ const getTanggalWIB = () => {
 };
 
 // ======================================
-// ✅ KONEKSI DATABASE & SEMUA TABEL
+// ✅ KONEKSI DATABASE
 // ======================================
 const db = new sqlite3.Database('./database.db', (err) => {
   if (err) console.error("❌ Koneksi DB gagal:", err.message);
@@ -149,6 +150,9 @@ db.serialize(() => {
     shower_gel INTEGER DEFAULT 0,
     shower_cap INTEGER DEFAULT 0,
     dental_kit INTEGER DEFAULT 0,
+    tissue_roll INTEGER DEFAULT 0,
+    hand_soap INTEGER DEFAULT 0,
+    plastic_bin INTEGER DEFAULT 0,
     laundry_bag INTEGER DEFAULT 0,
     laundry_list INTEGER DEFAULT 0,
     dnd_sign INTEGER DEFAULT 0,
@@ -176,6 +180,19 @@ db.serialize(() => {
     dibuat_oleh TEXT
   )`);
 });
+
+// ======================================
+// ✅ RESET OTOMATIS SETIAP TENGAH MALAM
+// ======================================
+cron.schedule('0 0 * * *', () => {
+  const kemarin = new Date(new Date().getTime() - 86400000).toLocaleDateString('id-ID', {
+    timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).split('/').reverse().join('-');
+
+  console.log(`⏱️ Reset otomatis: hapus data ${kemarin}`);
+  db.run(`DELETE FROM tugas WHERE tanggal = ?`, [kemarin]);
+  db.run(`DELETE FROM permintaan_tamu WHERE tanggal = ?`, [kemarin]);
+}, { timezone: "Asia/Jakarta" });
 
 // ======================================
 // ✅ KONFIGURASI APLIKASI
@@ -233,6 +250,7 @@ app.get('/spv', (req, res) => {
   const hariIni = getTanggalWIB();
   const cariTanggal = req.query.tanggal || hariIni;
   const cariKamar = req.query.kamar || '';
+  const filterPetugas = req.query.petugas || '';
 
   db.all(`SELECT nomor_kamar, lantai, tipe_kamar FROM kamar WHERE aktif = 1 ORDER BY nomor_kamar`, [], (err, daftarKamar) => {
     db.all(`SELECT nama FROM pengguna WHERE peran = 'RA' AND aktif = 1 ORDER BY nama`, [], (err, daftarRA) => {
@@ -247,6 +265,7 @@ app.get('/spv', (req, res) => {
       `;
       const param = [cariTanggal];
       if (cariKamar) { query += ` AND t.kamar = ?`; param.push(cariKamar); }
+      if (filterPetugas) { query += ` AND t.petugas = ?`; param.push(filterPetugas); }
       query += ` ORDER BY t.kamar`;
 
       db.all(query, param, (err, daftarTugas) => {
@@ -261,8 +280,9 @@ app.get('/spv', (req, res) => {
             tanggal: hariIni,
             cariTanggal,
             cariKamar,
-            kamarPerLantai,
+            filterPetugas,
             daftarRA,
+            kamarPerLantai,
             daftarTugas,
             daftarPermintaan,
             pesan: res.locals.pesan
@@ -280,7 +300,6 @@ app.post('/tambah-tugas', (req, res) => {
   
   let selesai = 0;
   const total = daftarKamar.length;
-
   if (total === 0) return res.redirect('/spv?pesan=gagal');
 
   daftarKamar.forEach((k, idx) => {
@@ -315,6 +334,9 @@ app.get('/ra', (req, res) => {
            IFNULL(l.shower_gel, 0) AS shower_gel,
            IFNULL(l.shower_cap, 0) AS shower_cap,
            IFNULL(l.dental_kit, 0) AS dental_kit,
+           IFNULL(l.tissue_roll, 0) AS tissue_roll,
+           IFNULL(l.hand_soap, 0) AS hand_soap,
+           IFNULL(l.plastic_bin, 0) AS plastic_bin,
            IFNULL(l.laundry_bag, 0) AS laundry_bag,
            IFNULL(l.laundry_list, 0) AS laundry_list,
            IFNULL(l.dnd_sign, 0) AS dnd_sign,
@@ -353,48 +375,41 @@ app.post('/selesai-kamar', (req, res) => {
     sheet_twin, sheet_king, duvet_twin, duvet_king,
     bath_towel, hand_towel, bath_mat, pillow_case,
     shampoo, soap, shower_gel, shower_cap, dental_kit,
+    tissue_roll, hand_soap, plastic_bin,
     laundry_bag, laundry_list, dnd_sign,
     magic, shoe, sugar, tea, coffee, creamer, mineral } = req.body;
   const waktuKeluar = getWaktuWIBJamMenit();
 
-  // Simpan data laporan
   db.run(`
     INSERT OR REPLACE INTO laporan (
       tanggal, nomor_kamar, waktu_masuk, waktu_keluar,
       sheet_twin, sheet_king, duvet_twin, duvet_king,
       bath_towel, hand_towel, bath_mat, pillow_case,
       shampoo, soap, shower_gel, shower_cap, dental_kit,
+      tissue_roll, hand_soap, plastic_bin,
       laundry_bag, laundry_list, dnd_sign,
       magic, shoe, sugar, tea, coffee, creamer, mineral, petugas
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `, [
     tanggal, kamar, waktu_masuk, waktuKeluar,
     sheet_twin||0, sheet_king||0, duvet_twin||0, duvet_king||0,
     bath_towel||0, hand_towel||0, bath_mat||0, pillow_case||0,
     shampoo||0, soap||0, shower_gel||0, shower_cap||0, dental_kit||0,
+    tissue_roll||0, hand_soap||0, plastic_bin||0,
     laundry_bag||0, laundry_list||0, dnd_sign||0,
     magic||0, shoe||0, sugar||0, tea||0, coffee||0, creamer||0, mineral||0,
     req.session.user.nama
   ], err => {
     if (err) return console.error(err);
 
-    // ✅ Proses ubah status otomatis sesuai aturan
     db.get(`SELECT status_awal FROM tugas WHERE tanggal = ? AND kamar = ?`, [tanggal, kamar], (err, data) => {
       if (err) return console.error(err);
       let statusBaru = data.status_awal;
+      if (data.status_awal === 'VD' || data.status_awal === 'VCU') statusBaru = 'VC';
+      else if (data.status_awal === 'OD') statusBaru = 'OC';
 
-      if (data.status_awal === 'VD' || data.status_awal === 'VCU') {
-        statusBaru = 'VC';
-      } else if (data.status_awal === 'OD') {
-        statusBaru = 'OC';
-      }
-      // OM dan OOO tetap seperti semula
-
-      // Update tugas dengan status baru dan tanda selesai
       db.run(`UPDATE tugas SET status_awal = ?, selesai = 1 WHERE tanggal = ? AND kamar = ?`,
-        [statusBaru, tanggal, kamar], () => {
-          res.redirect('/ra?pesan=berhasil');
-        });
+        [statusBaru, tanggal, kamar], () => res.redirect('/ra?pesan=berhasil'));
     });
   });
 });
@@ -405,29 +420,14 @@ app.post('/selesai-kamar', (req, res) => {
 app.get('/ot', (req, res) => {
   if (!req.session.user || req.session.user.peran !== 'OT') return res.redirect('/');
   const hariIni = getTanggalWIB();
-  
   db.all(`SELECT nomor_kamar, lantai, tipe_kamar FROM kamar WHERE aktif = 1 ORDER BY nomor_kamar`, [], (err, daftarKamar) => {
-    if (err) {
-      console.error("Error ambil kamar:", err);
-      return res.redirect('/?pesan=gagal');
-    }
-    db.all(`
-      SELECT * FROM permintaan_tamu 
-      WHERE tanggal = ? 
-      ORDER BY waktu_masuk DESC, id DESC
-    `, [hariIni], (err, daftarPermintaan) => {
-      if (err) {
-        console.error("Error ambil permintaan:", err);
-        return res.redirect('/?pesan=gagal');
-      }
+    db.all(`SELECT * FROM permintaan_tamu WHERE tanggal = ? ORDER BY waktu_masuk DESC`, [hariIni], (err, daftarPermintaan) => {
       res.render('ot', {
         user: req.session.user,
         tanggal: hariIni,
-        daftarKamar: daftarKamar,
-        daftarPermintaan: daftarPermintaan,
-        pesan: res.locals.pesan,
-        waktuSekarang: getWaktuWIB(),
-        waktuSingkat: getWaktuWIBJamMenit()
+        daftarKamar,
+        daftarPermintaan,
+        pesan: res.locals.pesan
       });
     });
   });
@@ -437,279 +437,213 @@ app.post('/tambah-permintaan', (req, res) => {
   const { nomor_kamar, jenis_permintaan, keterangan } = req.body;
   const hariIni = getTanggalWIB();
   const waktuMasuk = getWaktuWIBJamMenit();
-
-  if (!nomor_kamar || !jenis_permintaan) {
-    return res.redirect('/ot?pesan=gagal');
-  }
-
-  db.run(`
-    INSERT INTO permintaan_tamu 
-      (tanggal, nomor_kamar, jenis_permintaan, keterangan, waktu_masuk, dibuat_oleh, status)
-     VALUES (?, ?, ?, ?, ?, ?, 'Dipinjam Tamu')`,
+  db.run(`INSERT INTO permintaan_tamu (tanggal, nomor_kamar, jenis_permintaan, keterangan, waktu_masuk, dibuat_oleh) VALUES (?, ?, ?, ?, ?, ?)`,
     [hariIni, nomor_kamar, jenis_permintaan, keterangan || '', waktuMasuk, req.session.user.nama],
-    (err) => {
-      if (err) {
-        console.error("Error simpan permintaan:", err.message);
-        return res.redirect('/ot?pesan=gagal');
-      }
-      res.redirect('/ot?pesan=berhasil');
-    }
+    err => res.redirect('/ot?pesan=' + (err ? 'gagal' : 'berhasil'))
   );
 });
 
 app.post('/ubah-status-permintaan', (req, res) => {
   const { id, status } = req.body;
   const waktuSelesai = status === 'Dikembalikan' ? getWaktuWIBJamMenit() : null;
-
   db.run(`UPDATE permintaan_tamu SET status = ?, waktu_selesai = ? WHERE id = ?`,
     [status, waktuSelesai, id],
-    (err) => {
-      if (err) {
-        console.error("Error ubah status:", err.message);
-        return res.redirect('/ot?pesan=gagal');
-      }
-      res.redirect('/ot?pesan=berhasil');
-    }
+    err => res.redirect('/ot?pesan=' + (err ? 'gagal' : 'berhasil'))
   );
 });
 
 app.post('/hapus-permintaan', (req, res) => {
-  const { id } = req.body;
-  db.run(`DELETE FROM permintaan_tamu WHERE id = ?`, [id], (err) => {
-    if (err) {
-      console.error("Error hapus permintaan:", err.message);
-      return res.redirect('/ot?pesan=gagal');
-    }
-    res.redirect('/ot?pesan=berhasil');
-  });
-});
-
-app.get('/unduh-pdf-ot', (req, res) => {
-  const tanggal = req.query.tanggal || getTanggalWIB();
-
-  db.all(`
-    SELECT nomor_kamar, jenis_permintaan, keterangan, status, waktu_masuk, waktu_selesai, dibuat_oleh
-     FROM permintaan_tamu WHERE tanggal = ? ORDER BY waktu_masuk DESC`,
-    [tanggal],
-    (err, data) => {
-      if (err) {
-        console.error("Error ambil data PDF:", err);
-        return res.send('❌ Gagal mengambil data');
-      }
-      if (!data || data.length === 0) {
-        return res.send('❌ Tidak ada data permintaan untuk tanggal ini');
-      }
-
-      const PDFDocument = require('pdfkit');
-      const doc = new PDFDocument({ margin: 25, size: 'A4' });
-
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename=LAPORAN_PERMINTAAN_TAMU_${tanggal}.pdf`);
-      doc.pipe(res);
-
-      doc.fontSize(18).font('Helvetica-Bold').text('HORISON HOTEL & CONVENTION', { align: 'center' });
-      doc.fontSize(14).text('LAPORAN PERMINTAAN TAMU', { align: 'center', underline: true });
-      doc.moveDown(1);
-      doc.fontSize(11).font('Helvetica').text(`Tanggal: ${tanggal}`, { align: 'left' });
-      doc.text(`Dibuat Oleh: ${data[0].dibuat_oleh || '-'}`, { align: 'left' });
-      doc.moveDown(1);
-
-      doc.fontSize(10).font('Helvetica-Bold');
-      let y = doc.y;
-      doc.text('No', 25, y, { width: 30 });
-      doc.text('Kamar', 55, y, { width: 50 });
-      doc.text('Permintaan', 110, y, { width: 180 });
-      doc.text('Waktu Masuk', 295, y, { width: 70 });
-      doc.text('Status', 370, y, { width: 80 });
-      doc.text('Waktu Selesai', 450, y, { width: 70 });
-
-      y += 15;
-      doc.moveTo(25, y).lineTo(520, y).stroke();
-      y += 8;
-
-      doc.fontSize(10).font('Helvetica');
-      data.forEach((row, index) => {
-        if (y > 720) { doc.addPage(); y = 40; }
-        doc.text(String(index + 1), 25, y, { width: 30 });
-        doc.text(row.nomor_kamar, 55, y, { width: 50 });
-        doc.text(`${row.jenis_permintaan}${row.keterangan ? ` (${row.keterangan})` : ''}`, 110, y, { width: 180 });
-        doc.text(row.waktu_masuk || '-', 295, y, { width: 70 });
-        doc.text(row.status, 370, y, { width: 80 });
-        doc.text(row.waktu_selesai || '-', 450, y, { width: 70 });
-        y += 18;
-      });
-
-      y += 30;
-      doc.text('Diketahui,', 350, y);
-      doc.moveDown(4);
-      doc.text('( ____________________ )', 350, y);
-      doc.text('Supervisor', 360, y + 20);
-
-      doc.end();
-    }
+  db.run(`DELETE FROM permintaan_tamu WHERE id = ?`, [req.body.id],
+    err => res.redirect('/ot?pesan=' + (err ? 'gagal' : 'berhasil'))
   );
 });
 
 // ======================================
-// ✅ LAPORAN PDF SPV - RAPI & SESUAI STATUS
+// ✅ PDF LAPORAN PETUGAS (TERPISAH)
 // ======================================
-app.get('/unduh-pdf', (req, res) => {
+app.get('/unduh-pdf-petugas', (req, res) => {
   const tanggal = req.query.tanggal || getTanggalWIB();
+  const petugas = req.query.petugas || '';
+
+  if (!petugas) return res.send('❌ Pilih nama petugas terlebih dahulu');
 
   db.all(`
     SELECT 
-      t.kamar, 
-      t.petugas, 
-      t.status_awal, 
-      k.lantai, 
-      k.tipe_kamar,
+      t.kamar, t.petugas, t.status_awal, k.lantai, k.tipe_kamar,
       IFNULL(l.waktu_masuk, '-') AS waktu_masuk,
-      IFNULL(l.waktu_keluar, '-') AS waktu_keluar
+      IFNULL(l.waktu_keluar, '-') AS waktu_keluar,
+      l.sheet_twin, l.sheet_king, l.duvet_twin, l.duvet_king,
+      l.bath_towel, l.hand_towel, l.bath_mat, l.pillow_case,
+      l.shampoo, l.soap, l.shower_gel, l.shower_cap, l.dental_kit,
+      l.tissue_roll, l.hand_soap, l.plastic_bin,
+      l.sugar, l.tea, l.coffee, l.creamer, l.mineral
     FROM tugas t
     JOIN kamar k ON t.kamar = k.nomor_kamar
     LEFT JOIN laporan l ON t.tanggal = l.tanggal AND t.kamar = l.nomor_kamar
-    WHERE t.tanggal = ? 
+    WHERE t.tanggal = ? AND t.petugas = ?
     ORDER BY t.kamar
-  `, [tanggal], (err, dataKamar) => {
-    if (err) return res.send('❌ Gagal membuat PDF: ' + err.message);
-    if (!dataKamar || dataKamar.length === 0) return res.send('❌ Tidak ada data untuk tanggal ini');
+  `, [tanggal, petugas], (err, data) => {
+    if (err) return res.send('❌ Gagal ambil data');
+    if (!data || data.length === 0) return res.send('❌ Tidak ada data untuk petugas ini');
 
-    db.all(`
-      SELECT nomor_kamar, jenis_permintaan, keterangan, status, waktu_masuk, waktu_selesai, dibuat_oleh
-      FROM permintaan_tamu 
-      WHERE tanggal = ? 
-      ORDER BY nomor_kamar, waktu_masuk
-    `, [tanggal], (err, dataPermintaan) => {
-      if (err) console.warn('Tidak ada data permintaan:', err);
+    const doc = new PDFDocument({ margin: 20, size: 'A4', layout: 'landscape' });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="ROOMBOY_CONTROL_${petugas}_${tanggal}.pdf"`);
+    doc.pipe(res);
 
-      const doc = new PDFDocument({ margin: 20, size: 'A4', layout: 'landscape' });
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename=LAPORAN_HARIAN_${tanggal}.pdf`);
-      doc.pipe(res);
+    // Header
+    doc.font('Helvetica-Bold').fontSize(18).text('HORISON HOTEL & CONVENTION', { align: 'center' });
+    doc.fontSize(14).text('ROOMBOY CONTROL SHEET', { align: 'center', underline: true });
+    doc.moveDown(1);
+    doc.font('Helvetica').fontSize(11);
+    doc.text(`Nama Petugas: ${petugas}`);
+    doc.text(`Tanggal: ${tanggal}`);
+    doc.text(`Jumlah Kamar: ${data.length}`);
+    doc.moveDown(1);
 
-      // Header
-      doc.font('Helvetica-Bold').fontSize(18).text('HORISON HOTEL & CONVENTION', { align: 'center' });
-      doc.font('Helvetica-Bold').fontSize(14).text('LAPORAN KONTROL KEBERSIHAN & PERMINTAAN TAMU', { align: 'center', underline: true });
-      doc.moveDown(1);
-      doc.font('Helvetica').fontSize(11);
-      doc.text(`Tanggal: ${tanggal}`);
-      doc.text(`Jumlah kamar dikerjakan: ${dataKamar.length}`);
-      doc.moveDown(1);
+    // Tabel
+    doc.font('Helvetica-Bold').fontSize(9);
+    let y = doc.y;
+    doc.text('No', 20, y, { width: 25, align: 'center' });
+    doc.text('Kamar', 45, y, { width: 35, align: 'center' });
+    doc.text('Lantai', 80, y, { width: 45, align: 'center' });
+    doc.text('Status', 125, y, { width: 40, align: 'center' });
+    doc.text('Jam Masuk', 165, y, { width: 45, align: 'center' });
+    doc.text('Jam Keluar', 210, y, { width: 45, align: 'center' });
+    doc.text('Linen', 260, y, { width: 80, align: 'center' });
+    doc.text('Amenities', 350, y, { width: 120, align: 'center' });
+    doc.text('Status', 480, y, { width: 50, align: 'center' });
 
-      // Tabel Kamar
-      doc.font('Helvetica-Bold').fontSize(12).text('DAFTAR KAMAR & PETUGAS', { underline: true });
-      doc.moveDown(0.5);
+    y += 16;
+    doc.moveTo(20, y).lineTo(560, y).stroke();
+    y += 6;
 
-      doc.fontSize(9);
-      let y = doc.y;
-      doc.text('No', 20, y, { width: 25, align: 'center' });
-      doc.text('Kamar', 45, y, { width: 40, align: 'center' });
-      doc.text('Lantai', 85, y, { width: 55, align: 'center' });
-      doc.text('Status', 140, y, { width: 40, align: 'center' });
-      doc.text('Nama Petugas', 180, y, { width: 80, align: 'center' });
-      doc.text('Jam Masuk', 260, y, { width: 50, align: 'center' });
-      doc.text('Jam Keluar', 310, y, { width: 55, align: 'center' });
-      doc.text('Status Kerja', 365, y, { width: 70, align: 'center' });
+    doc.font('Helvetica').fontSize(8.5);
+    data.forEach((row, idx) => {
+      if (y > 520) { doc.addPage(); y = 30; }
+      const statusKerja = row.waktu_keluar !== '-' ? 'Selesai' : 'Belum';
 
-      y += 18;
-      doc.moveTo(20, y).lineTo(570, y).stroke();
-      y += 8;
+      const linen = [
+        row.sheet_twin > 0 ? `ST:${row.sheet_twin}` : '',
+        row.sheet_king > 0 ? `SK:${row.sheet_king}` : '',
+        row.duvet_twin > 0 ? `DT:${row.duvet_twin}` : '',
+        row.duvet_king > 0 ? `DK:${row.duvet_king}` : '',
+        row.bath_towel > 0 ? `BT:${row.bath_towel}` : '',
+        row.hand_towel > 0 ? `HT:${row.hand_towel}` : '',
+        row.bath_mat > 0 ? `BM:${row.bath_mat}` : '',
+        row.pillow_case > 0 ? `PC:${row.pillow_case}` : ''
+      ].filter(Boolean).join(', ');
 
-      doc.font('Helvetica').fontSize(9);
-      dataKamar.forEach((row, idx) => {
-        if (y > 520) { doc.addPage(); y = 30; }
-        const statusKerja = row.waktu_keluar !== '-' ? 'Selesai' : 'Belum Selesai';
-        doc.text(String(idx + 1), 20, y, { width: 25, align: 'center' });
-        doc.text(row.kamar, 45, y, { width: 40, align: 'center' });
-        doc.text(row.lantai, 85, y, { width: 55, align: 'center' });
-        doc.text(row.status_awal, 140, y, { width: 40, align: 'center' });
-        doc.text(row.petugas || '-', 180, y, { width: 80, align: 'left' });
-        doc.text(row.waktu_masuk, 260, y, { width: 50, align: 'center' });
-        doc.text(row.waktu_keluar, 310, y, { width: 55, align: 'center' });
-        doc.text(statusKerja, 365, y, { width: 70, align: 'center' });
-        y += 14;
-      });
+      const amenities = [
+        row.shampoo > 0 ? `Shp:${row.shampoo}` : '',
+        row.soap > 0 ? `Soap:${row.soap}` : '',
+        row.tissue_roll > 0 ? `Tissue:${row.tissue_roll}` : '',
+        row.hand_soap > 0 ? `HSoap:${row.hand_soap}` : '',
+        row.plastic_bin > 0 ? `Bin:${row.plastic_bin}` : '',
+        row.sugar > 0 ? `Sgr:${row.sugar}` : '',
+        row.tea > 0 ? `Tea:${row.tea}` : '',
+        row.mineral > 0 ? `Air:${row.mineral}` : ''
+      ].filter(Boolean).join(', ');
 
-      // Tabel Permintaan Tamu
-      y += 20;
-      if (y > 550) { doc.addPage(); y = 30; }
-      doc.font('Helvetica-Bold').fontSize(12).text('DAFTAR PERMINTAAN TAMU HARI INI', { underline: true });
-      doc.moveDown(0.5);
-
-      if (!dataPermintaan || dataPermintaan.length === 0) {
-        doc.font('Helvetica').fontSize(10).text('Tidak ada permintaan tamu pada hari ini.', { align: 'center', color: '#666666' });
-      } else {
-        doc.fontSize(9);
-        y = doc.y;
-        doc.text('No', 20, y, { width: 25, align: 'center' });
-        doc.text('Kamar', 45, y, { width: 40, align: 'center' });
-        doc.text('Permintaan', 85, y, { width: 130, align: 'left' });
-        doc.text('Keterangan', 215, y, { width: 120, align: 'left' });
-        doc.text('Waktu', 335, y, { width: 55, align: 'center' });
-        doc.text('Status', 390, y, { width: 70, align: 'center' });
-        doc.text('Dibuat Oleh', 460, y, { width: 80, align: 'left' });
-
-        y += 18;
-        doc.moveTo(20, y).lineTo(570, y).stroke();
-        y += 8;
-
-        doc.font('Helvetica').fontSize(9);
-        dataPermintaan.forEach((req, idx) => {
-          if (y > 520) { doc.addPage(); y = 30; }
-          doc.text(String(idx + 1), 20, y, { width: 25, align: 'center' });
-          doc.text(req.nomor_kamar, 45, y, { width: 40, align: 'center' });
-          doc.text(req.jenis_permintaan, 85, y, { width: 130, align: 'left' });
-          doc.text(req.keterangan || '-', 215, y, { width: 120, align: 'left' });
-          doc.text(req.waktu_masuk, 335, y, { width: 55, align: 'center' });
-          doc.text(req.status, 390, y, { width: 70, align: 'center' });
-          doc.text(req.dibuat_oleh || '-', 460, y, { width: 80, align: 'left' });
-          y += 14;
-        });
-      }
-
-      // Tanda Tangan
-      y += 30;
-      doc.font('Helvetica').fontSize(10).text(`Dibuat pada: ${getWaktuWIB()} WIB`, { align: 'right' });
-      doc.moveDown(4);
-      doc.text('Mengetahui,', 450, y);
-      doc.moveDown(3);
-      doc.text('( _________________________ )', 450, y);
-      doc.text('Supervisor', 465, y + 20);
-
-      doc.end();
+      doc.text(String(idx + 1), 20, y, { width: 25, align: 'center' });
+      doc.text(row.kamar, 45, y, { width: 35, align: 'center' });
+      doc.text(row.lantai, 80, y, { width: 45, align: 'center' });
+      doc.text(row.status_awal, 125, y, { width: 40, align: 'center' });
+      doc.text(row.waktu_masuk, 165, y, { width: 45, align: 'center' });
+      doc.text(row.waktu_keluar, 210, y, { width: 45, align: 'center' });
+      doc.text(linen || '-', 260, y, { width: 80, align: 'left' });
+      doc.text(amenities || '-', 350, y, { width: 120, align: 'left' });
+      doc.text(statusKerja, 480, y, { width: 50, align: 'center' });
+      y += 14;
     });
+
+    // Tanda tangan
+    y += 30;
+    doc.text(`Prepared by: ${petugas}`, 20, y);
+    doc.text(`Checked by: _________________`, 350, y);
+    doc.text(`Dibuat pada: ${getWaktuWIB()} WIB`, 20, y + 20);
+
+    doc.end();
+  });
+});
+
+// ======================================
+// ✅ PDF PERMINTAAN TAMU (TERPISAH)
+// ======================================
+app.get('/unduh-pdf-permintaan', (req, res) => {
+  const tanggal = req.query.tanggal || getTanggalWIB();
+  db.all(`
+    SELECT nomor_kamar, jenis_permintaan, keterangan, status, waktu_masuk, waktu_selesai, dibuat_oleh
+    FROM permintaan_tamu WHERE tanggal = ? ORDER BY nomor_kamar
+  `, [tanggal], (err, data) => {
+    if (err) return res.send('❌ Gagal ambil data');
+    if (!data || data.length === 0) return res.send('❌ Tidak ada permintaan hari ini');
+
+    const doc = new PDFDocument({ margin: 25, size: 'A4' });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="LAPORAN_PERMINTAAN_TAMU_${tanggal}.pdf"`);
+    doc.pipe(res);
+
+    doc.font('Helvetica-Bold').fontSize(18).text('HORISON HOTEL & CONVENTION', { align: 'center' });
+    doc.fontSize(14).text('LAPORAN PERMINTAAN TAMU', { align: 'center', underline: true });
+    doc.moveDown(1);
+    doc.font('Helvetica').fontSize(11).text(`Tanggal: ${tanggal}`);
+    doc.moveDown(1);
+
+    doc.font('Helvetica-Bold').fontSize(10);
+    let y = doc.y;
+    doc.text('No', 25, y, { width: 30 });
+    doc.text('Kamar', 55, y, { width: 50 });
+    doc.text('Permintaan', 110, y, { width: 150 });
+    doc.text('Waktu', 260, y, { width: 60 });
+    doc.text('Status', 320, y, { width: 80 });
+    doc.text('Dibuat Oleh', 400, y, { width: 90 });
+
+    y += 16;
+    doc.moveTo(25, y).lineTo(520, y).stroke();
+    y += 8;
+
+    doc.font('Helvetica').fontSize(10);
+    data.forEach((row, i) => {
+      if (y > 720) { doc.addPage(); y = 40; }
+      doc.text(String(i + 1), 25, y, { width: 30 });
+      doc.text(row.nomor_kamar, 55, y, { width: 50 });
+      doc.text(`${row.jenis_permintaan} ${row.keterangan ? `(${row.keterangan})` : ''}`, 110, y, { width: 150 });
+      doc.text(row.waktu_masuk, 260, y, { width: 60 });
+      doc.text(row.status, 320, y, { width: 80 });
+      doc.text(row.dibuat_oleh || '-', 400, y, { width: 90 });
+      y += 18;
+    });
+
+    doc.end();
   });
 });
 
 app.get('/unduh-excel', (req, res) => {
   const tanggal = req.query.tanggal || getTanggalWIB();
-  db.all(`
-    SELECT
-      t.tanggal AS "Tanggal",
-      t.kamar AS "No Kamar",
-      k.lantai AS "Lantai",
-      k.tipe_kamar AS "Tipe Kamar",
-      t.petugas AS "Nama Petugas",
-      t.status_awal AS "Status Kamar",
-      IFNULL(l.waktu_masuk, '-') AS "Jam Masuk",
-      IFNULL(l.waktu_keluar, '-') AS "Jam Keluar",
-      CASE WHEN t.selesai = 1 THEN 'Selesai' ELSE 'Belum Selesai' END AS "Status Pekerjaan"
-    FROM tugas t
-    JOIN kamar k ON t.kamar = k.nomor_kamar
+  const petugas = req.query.petugas || '';
+  let query = `
+    SELECT t.tanggal AS "Tanggal", t.kamar AS "Kamar", k.lantai AS "Lantai",
+           t.petugas AS "Petugas", t.status_awal AS "Status",
+           IFNULL(l.waktu_masuk, '-') AS "Jam Masuk",
+           IFNULL(l.waktu_keluar, '-') AS "Jam Keluar"
+    FROM tugas t JOIN kamar k ON t.kamar = k.nomor_kamar
     LEFT JOIN laporan l ON t.tanggal = l.tanggal AND t.kamar = l.nomor_kamar
-    WHERE t.tanggal = ? ORDER BY t.kamar
-  `, [tanggal], (err, data) => {
-    if (err) return res.send('❌ Gagal memuat data');
-    if (data.length === 0) return res.send('❌ Tidak ada data untuk diunduh');
-    const fields = Object.keys(data[0]);
+    WHERE t.tanggal = ?
+  `;
+  const param = [tanggal];
+  if (petugas) { query += ` AND t.petugas = ?`; param.push(petugas); }
+  query += ` ORDER BY t.kamar`;
+
+  db.all(query, param, (err, data) => {
+    if (err) return res.send('❌ Gagal ambil data');
+    if (!data.length) return res.send('❌ Tidak ada data');
     try {
-      const csv = parse(data, { fields, delimiter: ';', quote: '"' });
-      res.setHeader('Content-Disposition', `attachment; filename="Laporan_Kebersihan_${tanggal}.csv"`);
+      const csv = parse(data, { delimiter: ';', quote: '"' });
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="LAPORAN_${petugas || 'SEMUA'}_${tanggal}.csv"`);
       res.send('\uFEFF' + csv);
-    } catch (err) {
-      res.send('❌ Gagal membuat Excel: ' + err.message);
-    }
+    } catch (e) { res.send('❌ Gagal buat Excel'); }
   });
 });
 
@@ -717,7 +651,4 @@ app.get('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/'));
 });
 
-// ======================================
-// ✅ JALANKAN SERVER
-// ======================================
 app.listen(PORT, () => console.log(`✅ Server berjalan di port ${PORT}`));
