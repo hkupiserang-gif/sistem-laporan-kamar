@@ -9,13 +9,14 @@ const app = express();
 const PORT = process.env.PORT || 8888;
 
 // ======================================
-// ✅ WAKTU WIB PALING STABIL
+// ✅ ZONA WAKTU PAKSA WIB (Asia/Jakarta)
 // ======================================
-process.env.TZ = 'Asia/Jakarta'; // Paksa zona waktu dari awal
+process.env.TZ = 'Asia/Jakarta';
 
 const getWaktuWIB = () => {
   const now = new Date();
   return now.toLocaleTimeString('id-ID', {
+    timeZone: 'Asia/Jakarta',
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -26,6 +27,7 @@ const getWaktuWIB = () => {
 const getWaktuWIBJamMenit = () => {
   const now = new Date();
   return now.toLocaleTimeString('id-ID', {
+    timeZone: 'Asia/Jakarta',
     hour: '2-digit',
     minute: '2-digit',
     hour12: false
@@ -35,6 +37,7 @@ const getWaktuWIBJamMenit = () => {
 const getTanggalWIB = () => {
   const now = new Date();
   return now.toLocaleDateString('id-ID', {
+    timeZone: 'Asia/Jakarta',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit'
@@ -165,7 +168,7 @@ db.serialize(() => {
     nomor_kamar TEXT,
     jenis_permintaan TEXT,
     keterangan TEXT,
-    status TEXT DEFAULT 'Diproses',
+    status TEXT DEFAULT 'Dipinjam Tamu',
     waktu_masuk TEXT,
     waktu_selesai TEXT,
     dibuat_oleh TEXT
@@ -221,7 +224,7 @@ app.post('/login', (req, res) => {
 });
 
 // ======================================
-// Halaman Supervisor
+// Halaman Supervisor (Dapat revisi data)
 // ======================================
 app.get('/spv', (req, res) => {
   if (!req.session.user || req.session.user.peran !== 'SPV') return res.redirect('/');
@@ -268,6 +271,7 @@ app.get('/spv', (req, res) => {
   });
 });
 
+// Simpan & Revisi Tugas
 app.post('/tambah-tugas', (req, res) => {
   const { tanggal, petugas, kamar, status_awal } = req.body;
   const daftarKamar = Array.isArray(kamar) ? kamar : [kamar];
@@ -280,17 +284,15 @@ app.post('/tambah-tugas', (req, res) => {
 
   daftarKamar.forEach((k, idx) => {
     const status = daftarStatus[idx] || 'VD';
-    db.run(`INSERT OR REPLACE INTO tugas VALUES (?, ?, ?, ?, 0)`, 
-      [tanggal, k, petugas, status], 
-      () => {
-        if (++selesai === total) res.redirect('/spv?pesan=berhasil');
-      }
+    db.run(`INSERT OR REPLACE INTO tugas (tanggal, kamar, petugas, status_awal, selesai) VALUES (?, ?, ?, ?, ?)`, 
+      [tanggal, k, petugas, status, 0], 
+      () => { if (++selesai === total) res.redirect('/spv?pesan=berhasil'); }
     );
   });
 });
 
 // ======================================
-// Halaman Room Attendant
+// Halaman RA - Jam sudah diperbaiki
 // ======================================
 app.get('/ra', (req, res) => {
   if (!req.session.user || req.session.user.peran !== 'RA') return res.redirect('/');
@@ -326,7 +328,13 @@ app.get('/ra', (req, res) => {
     LEFT JOIN laporan l ON t.tanggal = l.tanggal AND t.kamar = l.nomor_kamar
     WHERE t.tanggal = ? AND t.petugas = ? ORDER BY t.kamar
   `, [hariIni, req.session.user.nama], (err, daftarTugas) => {
-    res.render('ra', { user: req.session.user, tanggal: hariIni, tugas: daftarTugas, pesan: res.locals.pesan });
+    res.render('ra', { 
+      user: req.session.user, 
+      tanggal: hariIni, 
+      tugas: daftarTugas, 
+      pesan: res.locals.pesan,
+      waktuSekarang: getWaktuWIB()
+    });
   });
 });
 
@@ -393,9 +401,180 @@ app.post('/tambah-permintaan', (req, res) => {
     [hariIni, req.body.nomor_kamar, req.body.jenis_permintaan, req.body.keterangan || '', waktuSekarang, req.session.user.nama], () => res.redirect('/ot?pesan=berhasil'));
 });
 
-app.post('/selesai-permintaan', (req, res) => {
-  db.run(`UPDATE permintaan_tamu SET status = 'Selesai', waktu_selesai = ? WHERE id = ?`, 
-    [getWaktuWIBJamMenit(), req.body.id], () => res.redirect('/ot?pesan=berhasil'));
+app.post('/ubah-status-permintaan', (req, res) => {
+  const { id, status } = req.body;
+  const waktuSelesai = status === 'Dikembalikan' ? getWaktuWIBJamMenit() : null;
+  db.run(`UPDATE permintaan_tamu SET status = ?, waktu_selesai = ? WHERE id = ?`, 
+    [status, waktuSelesai, id], () => res.redirect('/ot?pesan=berhasil'));
+});
+
+// ======================================
+// ✅ PDF ROOMBOY CONTROL SHEET - Format rapi sesuai lembar asli
+// ======================================
+app.get('/unduh-pdf', (req, res) => {
+  const tanggal = req.query.tanggal || getTanggalWIB();
+  db.all(`
+    SELECT t.kamar, t.petugas, t.status_awal, k.lantai,
+           IFNULL(l.waktu_masuk, '-') AS waktu_masuk,
+           IFNULL(l.waktu_keluar, '-') AS waktu_keluar,
+           l.sheet_twin, l.sheet_king, l.duvet_twin, l.duvet_king,
+           l.bath_towel, l.hand_towel, l.bath_mat, l.pillow_case,
+           l.shampoo, l.soap, l.shower_gel, l.shower_cap, l.dental_kit,
+           l.sugar, l.tea, l.coffee, l.creamer, l.mineral
+    FROM tugas t
+    JOIN kamar k ON t.kamar = k.nomor_kamar
+    LEFT JOIN laporan l ON t.tanggal = l.tanggal AND t.kamar = l.nomor_kamar
+    WHERE t.tanggal = ? ORDER BY t.kamar
+  `, [tanggal], (err, data) => {
+    if (err) return res.send('❌ Gagal membuat PDF');
+    if (data.length === 0) return res.send('❌ Tidak ada data untuk diunduh');
+    
+    const doc = new PDFDocument({ margin: 15, size: 'A4', layout: 'landscape' });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="ROOMBOY_CONTROL_SHEET_${tanggal}.pdf"`);
+    doc.pipe(res);
+
+    // Header Utama
+    doc.fontSize(18).font('Helvetica-Bold').text('HORISON', { align: 'center' });
+    doc.fontSize(14).text('HOTEL & CONVENTION', { align: 'center' });
+    doc.fontSize(16).font('Helvetica-Bold').text('ROOMBOY CONTROL SHEET', { align: 'center', underline: true });
+    doc.moveDown(1);
+
+    // Info Lembar
+    doc.fontSize(10).font('Helvetica').text(`SHIFT: Morning    |    FLOOR/SECTION: ${data[0]?.lantai || 'All Floors'}    |    DATE: ${tanggal}`, { align: 'left' });
+    doc.moveDown(1);
+
+    // Judul Kolom - Lebar pas tidak bertumpuk
+    doc.fontSize(7.5).font('Helvetica-Bold');
+    let y = doc.y;
+    doc.text('NO', 15, y, { width: 18, align: 'center' });
+    doc.text('ROOM', 35, y, { width: 25, align: 'center' });
+    doc.text('STATUS', 60, y, { width: 28, align: 'center' });
+    doc.text('TIME\nIN', 88, y, { width: 22, align: 'center' });
+    doc.text('TIME\nOUT', 110, y, { width: 22, align: 'center' });
+    doc.text('SHEET\nTWIN', 132, y, { width: 24, align: 'center' });
+    doc.text('SHEET\nKING', 156, y, { width: 24, align: 'center' });
+    doc.text('DUVET\nTWIN', 180, y, { width: 24, align: 'center' });
+    doc.text('DUVET\nKING', 204, y, { width: 24, align: 'center' });
+    doc.text('BATH\nTOWEL', 228, y, { width: 24, align: 'center' });
+    doc.text('HAND\nTOWEL', 252, y, { width: 24, align: 'center' });
+    doc.text('BATH\nMAT', 276, y, { width: 24, align: 'center' });
+    doc.text('PILLOW\nCASE', 300, y, { width: 24, align: 'center' });
+    doc.text('SHAMPOO', 324, y, { width: 24, align: 'center' });
+    doc.text('SOAP', 348, y, { width: 20, align: 'center' });
+    doc.text('SHOWER\nGEL', 368, y, { width: 24, align: 'center' });
+    doc.text('SHOWER\nCAP', 392, y, { width: 24, align: 'center' });
+    doc.text('DENTAL\nKIT', 416, y, { width: 24, align: 'center' });
+    doc.text('SUGAR', 440, y, { width: 24, align: 'center' });
+    doc.text('TEA', 464, y, { width: 20, align: 'center' });
+    doc.text('COFFEE', 484, y, { width: 24, align: 'center' });
+    doc.text('CREAMER', 508, y, { width: 24, align: 'center' });
+    doc.text('MINERAL\nWATER', 532, y, { width: 26, align: 'center' });
+
+    y += 22;
+    doc.moveTo(15, y).lineTo(560, y).stroke();
+    y += 6;
+
+    // Isi Data
+    doc.fontSize(7.5).font('Helvetica');
+    data.forEach((row, idx) => {
+      if (y > 520) { doc.addPage(); y = 30; }
+      doc.text(String(idx + 1), 15, y, { width: 18, align: 'center' });
+      doc.text(row.kamar, 35, y, { width: 25, align: 'center' });
+      doc.text(row.status_awal, 60, y, { width: 28, align: 'center' });
+      doc.text(row.waktu_masuk, 88, y, { width: 22, align: 'center' });
+      doc.text(row.waktu_keluar, 110, y, { width: 22, align: 'center' });
+      doc.text(String(row.sheet_twin || 0), 132, y, { width: 24, align: 'center' });
+      doc.text(String(row.sheet_king || 0), 156, y, { width: 24, align: 'center' });
+      doc.text(String(row.duvet_twin || 0), 180, y, { width: 24, align: 'center' });
+      doc.text(String(row.duvet_king || 0), 204, y, { width: 24, align: 'center' });
+      doc.text(String(row.bath_towel || 0), 228, y, { width: 24, align: 'center' });
+      doc.text(String(row.hand_towel || 0), 252, y, { width: 24, align: 'center' });
+      doc.text(String(row.bath_mat || 0), 276, y, { width: 24, align: 'center' });
+      doc.text(String(row.pillow_case || 0), 300, y, { width: 24, align: 'center' });
+      doc.text(String(row.shampoo || 0), 324, y, { width: 24, align: 'center' });
+      doc.text(String(row.soap || 0), 348, y, { width: 20, align: 'center' });
+      doc.text(String(row.shower_gel || 0), 368, y, { width: 24, align: 'center' });
+      doc.text(String(row.shower_cap || 0), 392, y, { width: 24, align: 'center' });
+      doc.text(String(row.dental_kit || 0), 416, y, { width: 24, align: 'center' });
+      doc.text(String(row.sugar || 0), 440, y, { width: 24, align: 'center' });
+      doc.text(String(row.tea || 0), 464, y, { width: 20, align: 'center' });
+      doc.text(String(row.coffee || 0), 484, y, { width: 24, align: 'center' });
+      doc.text(String(row.creamer || 0), 508, y, { width: 24, align: 'center' });
+      doc.text(String(row.mineral || 0), 532, y, { width: 26, align: 'center' });
+      y += 12;
+    });
+
+    // Keterangan Status sesuai lembar asli
+    y += 15;
+    doc.fontSize(7);
+    doc.text('KETERANGAN STATUS:', 15, y);
+    y += 12;
+    doc.text('VD = Vacant Dirty | VC = Vacant Clean | OD = Occupied Dirty | OC = Occupied Clean | VCU = Vacant Clean Unchecked', 15, y);
+    y += 10;
+    doc.text('OOO = Out of Order | OM = House Use | DND = Do Not Disturb | ED = Expected Departure | EA = Expected Arrival', 15, y);
+    y += 20;
+    doc.text('PREPARED BY: ________________________        CHECKED BY: ________________________', 15, y);
+
+    doc.end();
+  });
+});
+
+// ======================================
+// ✅ PDF LAPORAN PERMINTAAN TAMU (OT)
+// ======================================
+app.get('/unduh-pdf-ot', (req, res) => {
+  const tanggal = req.query.tanggal || getTanggalWIB();
+  db.all(`
+    SELECT nomor_kamar, jenis_permintaan, keterangan, status, waktu_masuk, waktu_selesai, dibuat_oleh
+    FROM permintaan_tamu WHERE tanggal = ? ORDER BY waktu_masuk DESC
+  `, [tanggal], (err, data) => {
+    if (err) return res.send('❌ Gagal membuat PDF');
+    if (data.length === 0) return res.send('❌ Tidak ada data permintaan hari ini');
+
+    const doc = new PDFDocument({ margin: 25, size: 'A4' });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="LAPORAN_PERMINTAAN_TAMU_${tanggal}.pdf"`);
+    doc.pipe(res);
+
+    doc.fontSize(18).font('Helvetica-Bold').text('HORISON HOTEL & CONVENTION', { align: 'center' });
+    doc.fontSize(14).text('LAPORAN PERMINTAAN TAMU', { align: 'center', underline: true });
+    doc.moveDown(1);
+    doc.fontSize(11).text(`Tanggal: ${tanggal}`, { align: 'left' });
+    doc.text(`Nama OT: ${data[0]?.dibuat_oleh || '-'}`, { align: 'left' });
+    doc.moveDown(1);
+
+    doc.fontSize(10).font('Helvetica-Bold');
+    let y = doc.y;
+    doc.text('No', 25, y, { width: 30 });
+    doc.text('No Kamar', 55, y, { width: 60 });
+    doc.text('Jenis Barang / Permintaan', 115, y, { width: 180 });
+    doc.text('Waktu Masuk', 295, y, { width: 70 });
+    doc.text('Status', 365, y, { width: 80 });
+    doc.text('Waktu Selesai', 445, y, { width: 70 });
+
+    y += 15;
+    doc.moveTo(25, y).lineTo(515, y).stroke();
+    y += 8;
+
+    doc.fontSize(10).font('Helvetica');
+    data.forEach((row, idx) => {
+      if (y > 720) { doc.addPage(); y = 40; }
+      doc.text(String(idx + 1), 25, y, { width: 30 });
+      doc.text(row.nomor_kamar, 55, y, { width: 60 });
+      doc.text(`${row.jenis_permintaan} ${row.keterangan ? `(${row.keterangan})` : ''}`, 115, y, { width: 180 });
+      doc.text(row.waktu_masuk || '-', 295, y, { width: 70 });
+      doc.text(row.status, 365, y, { width: 80 });
+      doc.text(row.waktu_selesai || '-', 445, y, { width: 70 });
+      y += 18;
+    });
+
+    y += 30;
+    doc.text('Dibuat oleh: ____________________', 25, y);
+    doc.text('Disetujui: ____________________', 300, y);
+
+    doc.end();
+  });
 });
 
 // ======================================
@@ -426,11 +605,6 @@ app.get('/unduh-excel', (req, res) => {
       IFNULL(l.shower_gel, 0) AS "Shower Gel",
       IFNULL(l.shower_cap, 0) AS "Shower Cap",
       IFNULL(l.dental_kit, 0) AS "Dental Kit",
-      IFNULL(l.laundry_bag, 0) AS "Laundry Bag",
-      IFNULL(l.laundry_list, 0) AS "Laundry List",
-      IFNULL(l.dnd_sign, 0) AS "DND Sign",
-      IFNULL(l.magic, 0) AS "Magic",
-      IFNULL(l.shoe, 0) AS "Shoe Shiner",
       IFNULL(l.sugar, 0) AS "Sugar",
       IFNULL(l.tea, 0) AS "Tea",
       IFNULL(l.coffee, 0) AS "Coffee",
@@ -453,113 +627,6 @@ app.get('/unduh-excel', (req, res) => {
     } catch (err) {
       res.send('❌ Gagal membuat Excel: ' + err.message);
     }
-  });
-});
-
-// ======================================
-// ✅ UNDUH PDF SESUAI FORMAT ROOMBOY CONTROL SHEET
-// ======================================
-app.get('/unduh-pdf', (req, res) => {
-  const tanggal = req.query.tanggal || getTanggalWIB();
-  db.all(`
-    SELECT t.kamar, t.petugas, t.status_awal, k.lantai,
-           IFNULL(l.waktu_masuk, '-') AS waktu_masuk,
-           IFNULL(l.waktu_keluar, '-') AS waktu_keluar,
-           l.sheet_twin, l.sheet_king, l.duvet_twin, l.duvet_king,
-           l.bath_towel, l.hand_towel, l.bath_mat, l.pillow_case,
-           l.shampoo, l.soap, l.shower_gel, l.shower_cap, l.dental_kit,
-           l.sugar, l.tea, l.coffee, l.creamer, l.mineral
-    FROM tugas t
-    JOIN kamar k ON t.kamar = k.nomor_kamar
-    LEFT JOIN laporan l ON t.tanggal = l.tanggal AND t.kamar = l.nomor_kamar
-    WHERE t.tanggal = ? ORDER BY t.kamar
-  `, [tanggal], (err, data) => {
-    if (err) return res.send('❌ Gagal membuat PDF');
-    if (data.length === 0) return res.send('❌ Tidak ada data untuk diunduh');
-    
-    const doc = new PDFDocument({ margin: 20, size: 'A4', layout: 'landscape' });
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="ROOMBOY_CONTROL_SHEET_${tanggal}.pdf"`);
-    doc.pipe(res);
-
-    doc.fontSize(18).font('Helvetica-Bold').text('HORISON', { align: 'center' });
-    doc.fontSize(14).text('HOTEL & CONVENTION', { align: 'center' });
-    doc.fontSize(16).font('Helvetica-Bold').text('ROOMBOY CONTROL SHEET', { align: 'center', underline: true });
-    doc.moveDown(1);
-
-    doc.fontSize(10).font('Helvetica').text(`SHIFT: Morning    |    FLOOR/SECTION: ${data[0]?.lantai || 'All Floors'}    |    DATE: ${tanggal}`, { align: 'left' });
-    doc.moveDown(1);
-
-    doc.fontSize(9).font('Helvetica-Bold');
-    let y = doc.y;
-    doc.text('NO', 20, y, { width: 25, align: 'center' });
-    doc.text('ROOM', 45, y, { width: 35, align: 'center' });
-    doc.text('STATUS', 80, y, { width: 40, align: 'center' });
-    doc.text('TIME IN', 120, y, { width: 35, align: 'center' });
-    doc.text('TIME OUT', 155, y, { width: 35, align: 'center' });
-    doc.text('SHEET\nTWIN', 190, y, { width: 30, align: 'center' });
-    doc.text('SHEET\nKING', 220, y, { width: 30, align: 'center' });
-    doc.text('DUVET\nTWIN', 250, y, { width: 30, align: 'center' });
-    doc.text('DUVET\nKING', 280, y, { width: 30, align: 'center' });
-    doc.text('BATH\nTOWEL', 310, y, { width: 30, align: 'center' });
-    doc.text('HAND\nTOWEL', 340, y, { width: 30, align: 'center' });
-    doc.text('BATH\nMAT', 370, y, { width: 30, align: 'center' });
-    doc.text('PILLOW\nCASE', 400, y, { width: 30, align: 'center' });
-    doc.text('SHAMPOO', 430, y, { width: 35, align: 'center' });
-    doc.text('SOAP', 465, y, { width: 25, align: 'center' });
-    doc.text('SHOWER\nGEL', 490, y, { width: 25, align: 'center' });
-    doc.text('SHOWER\nCAP', 515, y, { width: 25, align: 'center' });
-    doc.text('DENTAL\nKIT', 540, y, { width: 30, align: 'center' });
-    doc.text('SUGAR', 570, y, { width: 30, align: 'center' });
-    doc.text('TEA', 600, y, { width: 25, align: 'center' });
-    doc.text('COFFEE', 625, y, { width: 35, align: 'center' });
-    doc.text('CREAMER', 660, y, { width: 35, align: 'center' });
-    doc.text('MINERAL\nWATER', 695, y, { width: 35, align: 'center' });
-
-    y += 25;
-    doc.moveTo(20, y).lineTo(730, y).stroke();
-    y += 8;
-
-    doc.fontSize(9).font('Helvetica');
-    data.forEach((row, idx) => {
-      if (y > 520) { doc.addPage(); y = 40; }
-      doc.text(String(idx + 1), 20, y, { width: 25, align: 'center' });
-      doc.text(row.kamar, 45, y, { width: 35, align: 'center' });
-      doc.text(row.status_awal, 80, y, { width: 40, align: 'center' });
-      doc.text(row.waktu_masuk, 120, y, { width: 35, align: 'center' });
-      doc.text(row.waktu_keluar, 155, y, { width: 35, align: 'center' });
-      doc.text(String(row.sheet_twin || 0), 190, y, { width: 30, align: 'center' });
-      doc.text(String(row.sheet_king || 0), 220, y, { width: 30, align: 'center' });
-      doc.text(String(row.duvet_twin || 0), 250, y, { width: 30, align: 'center' });
-      doc.text(String(row.duvet_king || 0), 280, y, { width: 30, align: 'center' });
-      doc.text(String(row.bath_towel || 0), 310, y, { width: 30, align: 'center' });
-      doc.text(String(row.hand_towel || 0), 340, y, { width: 30, align: 'center' });
-      doc.text(String(row.bath_mat || 0), 370, y, { width: 30, align: 'center' });
-      doc.text(String(row.pillow_case || 0), 400, y, { width: 30, align: 'center' });
-      doc.text(String(row.shampoo || 0), 430, y, { width: 35, align: 'center' });
-      doc.text(String(row.soap || 0), 465, y, { width: 25, align: 'center' });
-      doc.text(String(row.shower_gel || 0), 490, y, { width: 25, align: 'center' });
-      doc.text(String(row.shower_cap || 0), 515, y, { width: 25, align: 'center' });
-      doc.text(String(row.dental_kit || 0), 540, y, { width: 30, align: 'center' });
-      doc.text(String(row.sugar || 0), 570, y, { width: 30, align: 'center' });
-      doc.text(String(row.tea || 0), 600, y, { width: 25, align: 'center' });
-      doc.text(String(row.coffee || 0), 625, y, { width: 35, align: 'center' });
-      doc.text(String(row.creamer || 0), 660, y, { width: 35, align: 'center' });
-      doc.text(String(row.mineral || 0), 695, y, { width: 35, align: 'center' });
-      y += 15;
-    });
-
-    y += 15;
-    doc.fontSize(8);
-    doc.text('KETERANGAN STATUS:', 20, y);
-    y += 12;
-    doc.text('VD = Vacant Dirty   |   VC = Vacant Clean   |   OD = Occupied Dirty   |   OC = Occupied Clean   |   VCU = Vacant Clean Unchecked', 20, y);
-    y += 12;
-    doc.text('OOO = Out of Order   |   OM = House Use   |   DND = Do Not Disturb', 20, y);
-    y += 20;
-    doc.text('PREPARED BY: ________________________        CHECKED BY: ________________________', 20, y);
-
-    doc.end();
   });
 });
 
