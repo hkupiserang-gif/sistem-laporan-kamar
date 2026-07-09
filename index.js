@@ -182,17 +182,31 @@ db.serialize(() => {
 });
 
 // ======================================
-// ✅ RESET OTOMATIS SETIAP TENGAH MALAM
+// ✅ RESET OTOMATIS SETIAP JAM 00:00 WIB
 // ======================================
 cron.schedule('0 0 * * *', () => {
   const kemarin = new Date(new Date().getTime() - 86400000).toLocaleDateString('id-ID', {
-    timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit'
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
   }).split('/').reverse().join('-');
 
-  console.log(`⏱️ Reset otomatis: hapus data ${kemarin}`);
-  db.run(`DELETE FROM tugas WHERE tanggal = ?`, [kemarin]);
-  db.run(`DELETE FROM permintaan_tamu WHERE tanggal = ?`, [kemarin]);
-}, { timezone: "Asia/Jakarta" });
+  console.log(`⏱️ Reset otomatis berjalan: menghapus data tanggal ${kemarin}`);
+  
+  db.run(`DELETE FROM tugas WHERE tanggal = ?`, [kemarin], (err) => {
+    if (err) console.error("❌ Gagal hapus tugas:", err.message);
+    else console.log("✅ Data tugas hari kemarin dibersihkan");
+  });
+
+  db.run(`DELETE FROM permintaan_tamu WHERE tanggal = ?`, [kemarin], (err) => {
+    if (err) console.error("❌ Gagal hapus permintaan:", err.message);
+    else console.log("✅ Data permintaan tamu hari kemarin dibersihkan");
+  });
+}, {
+  scheduled: true,
+  timezone: "Asia/Jakarta"
+});
 
 // ======================================
 // ✅ KONFIGURASI APLIKASI
@@ -312,7 +326,7 @@ app.post('/tambah-tugas', (req, res) => {
 });
 
 // ======================================
-// ✅ HALAMAN RA + PERUBAHAN STATUS OTOMATIS
+// ✅ HALAMAN RA
 // ======================================
 app.get('/ra', (req, res) => {
   if (!req.session.user || req.session.user.peran !== 'RA') return res.redirect('/');
@@ -459,7 +473,7 @@ app.post('/hapus-permintaan', (req, res) => {
 });
 
 // ======================================
-// ✅ PDF LAPORAN PETUGAS (TERPISAH)
+// ✅ PDF LAPORAN PETUGAS (TERPISAH, SESUAI FORMAT)
 // ======================================
 app.get('/unduh-pdf-petugas', (req, res) => {
   const tanggal = req.query.tanggal || getTanggalWIB();
@@ -651,4 +665,9 @@ app.get('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/'));
 });
 
-app.listen(PORT, () => console.log(`✅ Server berjalan di port ${PORT}`));
+// ======================================
+// ✅ JALANKAN SERVER (SESUNGGUHNYA UNTUK RAILWAY)
+// ======================================
+app.listen(PORT, () => {
+  console.log(`✅ Server berjalan di port ${PORT} | Waktu sistem: ${getWaktuWIB()}`);
+});
