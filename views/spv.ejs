@@ -56,7 +56,6 @@
 
     <% if (pesan) { %><div class="pesan <%= pesan.tipe %>"><%= pesan.teks %></div><% } %>
 
-    <!-- ✅ FORM PEMBAGIAN KAMAR -->
     <div class="card">
       <h3>📝 Pembagian Tugas Kamar</h3>
       <form action="/tambah-tugas" method="POST">
@@ -81,7 +80,6 @@
                 <div class="kamar-item">
                   <input type="checkbox" name="kamar" value="<%= k.nomor_kamar %>" id="kamar_<%= k.nomor_kamar %>">
                   <label for="kamar_<%= k.nomor_kamar %>"><strong><%= k.nomor_kamar %></strong></label>
-                  <!-- ✅ PILIHAN STATUS SESUAI PERMINTAAN -->
                   <select name="status_awal" style="width:100%; margin-top:4px; font-size:11px;">
                     <option value="VD">VD</option>
                     <option value="VC">VC</option>
@@ -99,7 +97,6 @@
       </form>
     </div>
 
-    <!-- Filter & Unduhan -->
     <div class="card">
       <h3>Pencarian & Unduh Laporan</h3>
       <form action="/spv" method="GET" class="filter-bar">
@@ -115,7 +112,6 @@
       </div>
     </div>
 
-    <!-- Daftar Tugas -->
     <div class="card">
       <h3>Status Pekerjaan Kamar - <%= cariTanggal %></h3>
       <% if (daftarTugas.length === 0) { %>
@@ -162,13 +158,11 @@
   </div>
 
   <script>
-    // ✅ WAKTU BERJALAN LENGKAP DENGAN DETIK
     setInterval(() => {
       const now = new Date();
-      const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
-      const jam = wib.getHours().toString().padStart(2, '0');
-      const menit = wib.getMinutes().toString().padStart(2, '0');
-      const detik = wib.getSeconds().toString().padStart(2, '0');
+      const jam = now.getHours().toString().padStart(2, '0');
+      const menit = now.getMinutes().toString().padStart(2, '0');
+      const detik = now.getSeconds().toString().padStart(2, '0');
       document.getElementById('jamSekarang').textContent = `${jam}:${menit}:${detik}`;
     }, 1000);
   </script>
