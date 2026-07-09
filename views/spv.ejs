@@ -10,7 +10,7 @@
     .header {background-color: #004b97; color: white; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
     .header h2 {font-size: 18px; font-weight: 600;}
     .header a {color: white; text-decoration: none; margin-left: 12px;}
-    .waktu-live {font-size: 14px; background: #003a7a; padding: 4px 10px; border-radius: 4px;}
+    .waktu-live {font-size: 14px; background: #003a7a; padding: 4px 10px; border-radius: 4px; font-variant-numeric: tabular-nums;}
     .logo-container {text-align: center; margin: 20px 0;}
     .logo {font-size: 32px; font-weight: bold; color: #002b5c; letter-spacing: 1px;}
     .sub-logo {font-size: 14px; color: #555; margin-top: 4px;}
@@ -25,7 +25,11 @@
     .btn {padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500;}
     .btn-biru {background: #004b97; color: white;}
     .btn-hijau {background: #28a745; color: white;}
-    .btn-kuning {background: #ffc107; color: #212529;}
+    .lantai-group {margin-bottom: 15px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px;}
+    .lantai-judul {font-weight: bold; margin-bottom: 8px; color: #002b5c;}
+    .kamar-grid {display: grid; grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 8px;}
+    .kamar-item {padding: 6px; border: 1px solid #ddd; border-radius: 4px; text-align: center;}
+    .kamar-item input {margin-right: 4px;}
     table {width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px;}
     th, td {padding: 10px 8px; text-align: center; border: 1px solid #e2e8f0; vertical-align: middle;}
     th {background-color: #f1f5f9; font-weight: 600; color: #333;}
@@ -33,11 +37,6 @@
     .status-belum {background: #fff3cd; color: #856404;}
     .status-proses {background: #cce5ff; color: #004085;}
     .status-selesai {background: #d4edda; color: #155724;}
-    .lantai-group {margin-bottom: 15px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px;}
-    .lantai-judul {font-weight: bold; margin-bottom: 8px; color: #002b5c;}
-    .kamar-grid {display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px;}
-    .kamar-item {padding: 6px; border: 1px solid #ddd; border-radius: 4px; text-align: center; cursor: pointer;}
-    .kamar-item input {margin-right: 4px;}
   </style>
 </head>
 <body>
@@ -82,12 +81,15 @@
                 <div class="kamar-item">
                   <input type="checkbox" name="kamar" value="<%= k.nomor_kamar %>" id="kamar_<%= k.nomor_kamar %>">
                   <label for="kamar_<%= k.nomor_kamar %>"><strong><%= k.nomor_kamar %></strong></label>
+                  <!-- ✅ PILIHAN STATUS SESUAI PERMINTAAN -->
                   <select name="status_awal" style="width:100%; margin-top:4px; font-size:11px;">
                     <option value="VD">VD</option>
+                    <option value="VC">VC</option>
                     <option value="OD">OD</option>
+                    <option value="OC">OC</option>
+                    <option value="VCU">VCU</option>
                     <option value="OOO">OOO</option>
-                    <option value="DND">DND</option>
-                    <option value="Clean">Clean</option>
+                    <option value="OM">OM</option>
                   </select>
                 </div>
               <% }) %>
@@ -160,13 +162,14 @@
   </div>
 
   <script>
-    // ✅ Update waktu WIB secara otomatis
+    // ✅ WAKTU BERJALAN LENGKAP DENGAN DETIK
     setInterval(() => {
       const now = new Date();
       const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
       const jam = wib.getHours().toString().padStart(2, '0');
       const menit = wib.getMinutes().toString().padStart(2, '0');
-      document.getElementById('jamSekarang').textContent = `${jam}:${menit}`;
+      const detik = wib.getSeconds().toString().padStart(2, '0');
+      document.getElementById('jamSekarang').textContent = `${jam}:${menit}:${detik}`;
     }, 1000);
   </script>
 </body>
