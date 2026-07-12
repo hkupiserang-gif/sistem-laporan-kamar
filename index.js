@@ -5,6 +5,8 @@ const sqlite3 = require('sqlite3').verbose();
 const { parse } = require('json2csv');
 const PDFDocument = require('pdfkit');
 const cron = require('node-cron');
+// ✅ TAMBAHKAN PUSTAKA BARU
+const ExcelJS = require('exceljs');
 
 const app = express();
 const PORT = process.env.PORT || 8888;
@@ -714,40 +716,99 @@ app.get('/unduh-pdf', (req, res) => {
   });
 });
 
-app.get('/unduh-excel', (req, res) => {
-  const tanggal = req.query.tanggal || getTanggalWIB();
-  const ra = req.query.ra || null;
+// ======================================
+// ✅ ROUTE UNDUH EXCEL SESUAI FORMAT TEMPLATE
+// ======================================
+app.get('/unduh-excel', async (req, res) => {
+  try {
+    const tanggal = req.query.tanggal || getTanggalWIB();
+    const ra = req.query.ra || null;
 
-  let query = `
-    SELECT
-      t.tanggal AS "Tanggal",
-      t.kamar AS "No Kamar",
-      k.lantai AS "Lantai",
-      t.petugas AS "Nama Petugas",
-      t.status_awal AS "Status Kamar",
-      IFNULL(l.waktu_masuk, '-') AS "Jam Masuk",
-      IFNULL(l.waktu_keluar, '-') AS "Jam Keluar"
-  `;
-  Object.keys(HARGA_BARANG).forEach(nama => {
-    query += `, IFNULL(l.${nama}, 0) AS "${nama.replace('_', ' ')}"`;
-  });
-  query += `
-    FROM tugas t
-    JOIN kamar k ON t.kamar = k.nomor_kamar
-    LEFT JOIN laporan l ON t.tanggal = l.tanggal AND t.kamar = l.nomor_kamar
-    WHERE t.tanggal = ?
-  `;
-  const param = [tanggal];
-  if (ra) { query += ` AND t.petugas = ?`; param.push(ra); }
-  query += ` ORDER BY t.petugas, t.kamar`;
+    // Ambil data lengkap dari database
+    const daftarTugas = await new Promise((resolve, reject) => {
+      let query = `
+        SELECT t.petugas, t.kamar, t.status_awal, k.lantai, k.tipe_kamar,
+               IFNULL(l.waktu_masuk, '-') AS waktu_masuk,
+               IFNULL(l.waktu_keluar, '-') AS waktu_keluar,
+               l.*
+        FROM tugas t
+        JOIN kamar k ON t.kamar = k.nomor_kamar
+        LEFT JOIN laporan l ON t.tanggal = l.tanggal AND t.kamar = l.nomor_kamar
+        WHERE t.tanggal = ? AND t.sudah_dibagikan = 1
+      `;
+      const param = [tanggal];
+      if (ra) { query += ` AND t.petugas = ?`; param.push(ra); }
+      query += ` ORDER BY t.petugas, t.kamar`;
 
-  db.all(query, param, (err, data) => {
-    if (err || !data.length) return res.send('❌ Tidak ada data');
-    const csv = parse(data, { delimiter: ';', quote: '"' });
-    res.setHeader('Content-Disposition', `attachment; filename="Laporan_${ra ? 'RA_' + ra + '_' : ''}${tanggal}.csv"`);
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.send('\uFEFF' + csv);
-  });
+      db.all(query, param, (err, rows) => err ? reject(err) : resolve(rows));
+    });
+
+    if (!daftarTugas || daftarTugas.length === 0) {
+      return res.send('❌ Tidak ada data untuk tanggal ini');
+    }
+
+    // Buka template Excel yang sudah Anda siapkan
+    const workbook = new ExcelJS.Workbook();
+    const templatePath = path.join(__dirname, 'templates', 'excel', 'roomboy_control_template.xlsx');
+    await workbook.xlsx.readFile(templatePath);
+    const sheet = workbook.worksheets[0];
+
+    // Isi bagian header sesuai format hotel
+    sheet.getCell('B3').value = 'HORISON HOTEL & CONVENTION';
+    sheet.getCell('B4').value = daftarTugas[0].petugas || '-';
+    sheet.getCell('J4').value = tanggal;
+    sheet.getCell('S4').value = 'Morning';
+    sheet.getCell('AG4').value = daftarTugas[0].lantai || '-';
+
+    // Isi data kamar mulai dari baris ke-8
+    let baris = 8;
+    daftarTugas.forEach((data, no) => {
+      sheet.getCell(`A${baris}`).value = no + 1;
+      sheet.getCell(`B${baris}`).value = data.kamar;
+      sheet.getCell(`C${baris}`).value = data.status_awal;
+      sheet.getCell(`F${baris}`).value = data.waktu_masuk;
+      sheet.getCell(`G${baris}`).value = data.waktu_keluar;
+      
+      // Isi semua barang linen & amenitas
+      sheet.getCell(`H${baris}`).value = data.sheet_twin || 0;
+      sheet.getCell(`I${baris}`).value = data.sheet_king || 0;
+      sheet.getCell(`J${baris}`).value = data.duvet_twin || 0;
+      sheet.getCell(`K${baris}`).value = data.duvet_king || 0;
+      sheet.getCell(`L${baris}`).value = data.bath_towel || 0;
+      sheet.getCell(`M${baris}`).value = data.hand_towel || 0;
+      sheet.getCell(`N${baris}`).value = data.bath_mat || 0;
+      sheet.getCell(`O${baris}`).value = data.pillow_case || 0;
+      sheet.getCell(`P${baris}`).value = data.shampoo || 0;
+      sheet.getCell(`Q${baris}`).value = data.soap || 0;
+      sheet.getCell(`R${baris}`).value = data.shower_gel || 0;
+      sheet.getCell(`S${baris}`).value = data.shower_cap || 0;
+      sheet.getCell(`T${baris}`).value = data.dental_kit || 0;
+      sheet.getCell(`U${baris}`).value = data.laundry_bag || 0;
+      sheet.getCell(`V${baris}`).value = data.sugar || 0;
+      sheet.getCell(`W${baris}`).value = data.tea || 0;
+      sheet.getCell(`X${baris}`).value = data.coffee || 0;
+      sheet.getCell(`Y${baris}`).value = data.creamer || 0;
+      sheet.getCell(`Z${baris}`).value = data.mineral || 0;
+      sheet.getCell(`AA${baris}`).value = data.tissue_facial || 0;
+      sheet.getCell(`AB${baris}`).value = data.tissue_roll || 0;
+      sheet.getCell(`AC${baris}`).value = data.cotton_bud || 0;
+      sheet.getCell(`AD${baris}`).value = data.slipper || 0;
+      sheet.getCell(`AE${baris}`).value = data.comb || 0;
+      sheet.getCell(`AF${baris}`).value = data.shaving_kit || 0;
+
+      baris++;
+    });
+
+    // Kirim file ke pengguna
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=Roomboy_Control_Sheet_${ra ? ra + '_' : ''}${tanggal}.xlsx`);
+    await workbook.xlsx.write(res);
+    res.end();
+
+  } catch (err) {
+    console.error('❌ Error membuat Excel:', err);
+    res.send(`❌ Gagal membuat file Excel: ${err.message}`);
+  }
 });
 
 app.get('/logout', (req, res) => {
