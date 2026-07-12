@@ -821,58 +821,6 @@ app.get('/unduh-excel', async (req, res) => {
     }
 
     console.log('📊 Template sheet name:', templateSheet.name);
-    console.log('📊 Template rowCount:', templateSheet.rowCount);
-    console.log('📊 Template actualRowCount:', templateSheet.actualRowCount);
-
-    // Helper: copy header & format dari template ke sheet baru
-    const copyHeaderFromTemplate = (targetSheet) => {
-      // Copy column widths
-      if (templateSheet.columns && templateSheet.columns.length > 0) {
-        templateSheet.columns.forEach((col, idx) => {
-          if (targetSheet.columns[idx]) {
-            targetSheet.columns[idx].width = col.width;
-          }
-        });
-      }
-
-      // Copy rows 1-8 (header area)
-      for (let r = 1; r <= 8; r++) {
-        const templateRow = templateSheet.getRow(r);
-
-        // Null check - skip if row doesn't exist
-        if (!templateRow) {
-          console.log('⚠️ Template row ' + r + ' is null, skipping');
-          continue;
-        }
-
-        const targetRow = targetSheet.getRow(r);
-
-        // Check if row has cells
-        if (templateRow.eachCell) {
-          templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-            if (!cell) return;
-            const targetCell = targetRow.getCell(colNumber);
-            targetCell.value = cell.value;
-            if (cell.style) {
-              try {
-                targetCell.style = JSON.parse(JSON.stringify(cell.style));
-              } catch(e) {
-                // ignore style copy error
-              }
-            }
-          });
-        }
-
-        targetRow.height = templateRow.height;
-      }
-
-      // Copy merges
-      if (templateSheet.model && templateSheet.model.merges && templateSheet.model.merges.length > 0) {
-        templateSheet.model.merges.forEach(merge => {
-          try { targetSheet.mergeCells(merge); } catch(e) {}
-        });
-      }
-    };
 
     // Build SQL selects
     const bathRoomFields = [
@@ -896,13 +844,73 @@ app.get('/unduh-excel', async (req, res) => {
       let sheet;
 
       if (i === 0) {
-        // RA pertama: gunakan sheet template (di-rename ke nama RA)
+        // RA pertama: rename sheet template
         sheet = templateSheet;
         sheet.name = ra;
       } else {
-        // RA berikutnya: buat sheet baru, copy header/format dari template
+        // RA berikutnya: clone sheet dari template dengan cara yang lebih aman
+        // Buat sheet baru dengan nama RA
         sheet = workbook.addWorksheet(ra);
-        copyHeaderFromTemplate(sheet);
+
+        // Copy column properties
+        templateSheet.columns.forEach((col, idx) => {
+          if (sheet.columns[idx]) {
+            sheet.columns[idx].width = col.width;
+            sheet.columns[idx].hidden = col.hidden;
+          }
+        });
+
+        // Copy merged cells info
+        const merges = [];
+        if (templateSheet.model && templateSheet.model.merges) {
+          templateSheet.model.merges.forEach(m => merges.push(m));
+        }
+
+        // Copy row values and styles (hanya baris 1-8 untuk header)
+        for (let r = 1; r <= 8; r++) {
+          const srcRow = templateSheet.getRow(r);
+          const destRow = sheet.getRow(r);
+
+          // Copy row height
+          if (srcRow && srcRow.height) {
+            destRow.height = srcRow.height;
+          }
+
+          // Copy cell values and styles
+          if (srcRow && srcRow.eachCell) {
+            srcRow.eachCell({ includeEmpty: true }, (srcCell, colNumber) => {
+              const destCell = destRow.getCell(colNumber);
+
+              // Copy value
+              if (srcCell.value !== undefined && srcCell.value !== null) {
+                destCell.value = srcCell.value;
+              }
+
+              // Copy style (safely)
+              if (srcCell.style) {
+                try {
+                  destCell.style = JSON.parse(JSON.stringify(srcCell.style));
+                } catch(e) {
+                  // ignore style copy errors
+                }
+              }
+
+              // Copy number format
+              if (srcCell.numFmt) {
+                destCell.numFmt = srcCell.numFmt;
+              }
+            });
+          }
+        }
+
+        // Apply merges after all cells are set
+        merges.forEach(merge => {
+          try {
+            sheet.mergeCells(merge);
+          } catch(e) {
+            console.log('⚠️ Merge error:', merge, e.message);
+          }
+        });
       }
 
       // Query data kamar untuk RA ini
@@ -930,16 +938,13 @@ app.get('/unduh-excel', async (req, res) => {
             return reject(err);
           }
           console.log('📊 RA ' + ra + ': ' + rows.length + ' kamar');
-          if (rows.length > 0) {
-            console.log('📊 Sample row keys:', Object.keys(rows[0]).slice(0, 10));
-          }
           resolve(rows);
         });
       });
 
       if (dataRA.length === 0) continue;
 
-      // Isi header info (baris 4) - dengan null check
+      // Isi header info (baris 4)
       const firstRow = dataRA[0];
       sheet.getCell('B4').value = ra;
       sheet.getCell('J4').value = tanggal;
