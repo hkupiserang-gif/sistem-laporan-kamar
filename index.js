@@ -770,6 +770,8 @@ app.get('/unduh-excel', async (req, res) => {
     const tanggal = req.query.tanggal || getTanggalWIB();
     const raFilter = req.query.ra || null;
 
+    console.log('📥 Download Excel request:', { tanggal, raFilter });
+
     // Ambil daftar RA yang punya tugas di tanggal ini
     const daftarRA = await new Promise((resolve, reject) => {
       let query = `
@@ -789,6 +791,7 @@ app.get('/unduh-excel', async (req, res) => {
           console.error('❌ Error ambil daftar RA:', err.message);
           return reject(err);
         }
+        console.log('📊 RA ditemukan:', rows.length, rows.map(r => r.petugas));
         resolve(rows.map(r => r.petugas));
       });
     });
@@ -799,8 +802,21 @@ app.get('/unduh-excel', async (req, res) => {
 
     const workbook = new ExcelJS.Workbook();
     const templatePath = path.join(__dirname, 'templates', 'excel', 'roomboy_control_template.xlsx');
+
+    console.log('📁 Template path:', templatePath);
+
+    // Check if template exists
+    const fs = require('fs');
+    if (!fs.existsSync(templatePath)) {
+      console.error('❌ Template file tidak ditemukan:', templatePath);
+      return res.send('❌ Template Excel tidak ditemukan di server');
+    }
+
     await workbook.xlsx.readFile(templatePath);
     const templateSheet = workbook.worksheets[0];
+
+    console.log('📊 Template sheet name:', templateSheet.name);
+    console.log('📊 Template columns:', templateSheet.columns.length);
 
     // Helper: copy header & format dari template ke sheet baru
     const copyHeaderFromTemplate = (targetSheet) => {
@@ -835,7 +851,7 @@ app.get('/unduh-excel', async (req, res) => {
       }
     };
 
-    // Build SQL selects - use simple string concatenation instead of template literals with newlines
+    // Build SQL selects
     const bathRoomFields = [
       'sheet_twin', 'sheet_king', 'duvet_twin', 'duvet_king',
       'bath_towel', 'hand_towel', 'bath_mat', 'pillow_case'
@@ -857,11 +873,9 @@ app.get('/unduh-excel', async (req, res) => {
       let sheet;
 
       if (i === 0) {
-        // RA pertama: gunakan sheet template (di-rename ke nama RA)
         sheet = templateSheet;
         sheet.name = ra;
       } else {
-        // RA berikutnya: buat sheet baru, copy header/format dari template
         sheet = workbook.addWorksheet(ra);
         copyHeaderFromTemplate(sheet);
       }
@@ -890,23 +904,27 @@ app.get('/unduh-excel', async (req, res) => {
             console.error('❌ Error query data RA ' + ra + ':', err.message);
             return reject(err);
           }
-          console.log('📊 RA ' + ra + ': ' + rows.length + ' kamar ditemukan');
+          console.log('📊 RA ' + ra + ': ' + rows.length + ' kamar');
+          if (rows.length > 0) {
+            console.log('📊 Sample row:', JSON.stringify(rows[0], null, 2));
+          }
           resolve(rows);
         });
       });
 
       if (dataRA.length === 0) continue;
 
-      // Isi header info (baris 4)
+      // Isi header info (baris 4) - dengan null check
+      const firstRow = dataRA[0];
       sheet.getCell('B4').value = ra;
       sheet.getCell('J4').value = tanggal;
       sheet.getCell('S4').value = 'Morning';
-      sheet.getCell('AG4').value = dataRA[0]?.lantai || '-';
+      sheet.getCell('AG4').value = (firstRow && firstRow.lantai) ? firstRow.lantai : '-';
 
       // Isi data kamar mulai baris 9
       let baris = 9;
       dataRA.forEach((data) => {
-        sheet.getCell('B' + baris).value = data.kamar;
+        sheet.getCell('B' + baris).value = data.kamar || '';
         sheet.getCell('C' + baris).value = data.status_fo || '';
 
         let statusHKin = data.status_hk_in || '';
@@ -980,6 +998,7 @@ app.get('/unduh-excel', async (req, res) => {
 
   } catch (err) {
     console.error('❌ Error membuat Excel:', err);
+    console.error('❌ Stack:', err.stack);
     res.send('❌ Gagal membuat file Excel: ' + err.message);
   }
 });
