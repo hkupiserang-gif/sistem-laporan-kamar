@@ -674,14 +674,22 @@ app.get('/unduh-pdf', (req, res) => {
 
     let totalBiaya = 0;
     let y = doc.y;
+    const PAGE_BOTTOM = 520;
+    const HEADER_HEIGHT = 35;
+    const ITEM_HEIGHT = 14;
+    const TOTAL_HEIGHT = 20;
+    const SPACING = 15;
+
+    const checkPageBreak = (neededSpace) => {
+      if (y + neededSpace > PAGE_BOTTOM) {
+        doc.addPage();
+        y = 30;
+        return true;
+      }
+      return false;
+    };
 
     dataKamar.forEach((row, idx) => {
-      doc.font('Helvetica-Bold').fontSize(10);
-      doc.text(`Kamar: ${row.kamar} | Lantai: ${row.lantai} | Petugas: ${row.petugas || '-'}`, 20, y);
-      doc.text(`FO: ${row.status_awal || '-'} | HK IN: ${row.status_hk_in || '-'} | HK OUT: ${row.status_hk_out || '-'} | Masuk: ${row.waktu_masuk} | Keluar: ${row.waktu_keluar}`, 20, y + 15);
-      y += 30;
-      doc.font('Helvetica').fontSize(9);
-
       let biayaKamar = 0;
       const barangTerpakai = [];
       Object.keys(HARGA_BARANG).forEach(nama => {
@@ -689,29 +697,69 @@ app.get('/unduh-pdf', (req, res) => {
         if (jumlah > 0) {
           const sub = jumlah * HARGA_BARANG[nama];
           biayaKamar += sub;
-          barangTerpakai.push(`${nama.replace('_', ' ')}: ${jumlah} x Rp ${HARGA_BARANG[nama].toLocaleString('id-ID')} = Rp ${sub.toLocaleString('id-ID')}`);
+          barangTerpakai.push({
+            nama: nama.replace(/_/g, ' '),
+            jumlah,
+            harga: HARGA_BARANG[nama],
+            sub
+          });
         }
       });
 
+      const contentHeight = barangTerpakai.length > 0 
+        ? (barangTerpakai.length * ITEM_HEIGHT) + TOTAL_HEIGHT 
+        : ITEM_HEIGHT + TOTAL_HEIGHT;
+      const totalNeeded = HEADER_HEIGHT + contentHeight + SPACING;
+
+      checkPageBreak(totalNeeded);
+
+      doc.font('Helvetica-Bold').fontSize(10);
+      doc.text(`Kamar: ${row.kamar} | Lantai: ${row.lantai} | Petugas: ${row.petugas || '-'}`, 20, y);
+      doc.text(`FO: ${row.status_awal || '-'} | HK IN: ${row.status_hk_in || '-'} | HK OUT: ${row.status_hk_out || '-'} | Masuk: ${row.waktu_masuk} | Keluar: ${row.waktu_keluar}`, 20, y + 15);
+      y += HEADER_HEIGHT;
+
+      doc.font('Helvetica').fontSize(9);
       if (barangTerpakai.length > 0) {
         barangTerpakai.forEach(item => {
-          doc.text(item, 25, y);
-          y += 12;
+          if (y + ITEM_HEIGHT > PAGE_BOTTOM) {
+            doc.addPage();
+            y = 30;
+            doc.font('Helvetica-Bold').fontSize(9).text(`(Lanjutan Kamar ${row.kamar})`, 20, y);
+            y += 15;
+            doc.font('Helvetica').fontSize(9);
+          }
+          doc.text(`${item.nama}: ${item.jumlah} x Rp ${item.harga.toLocaleString('id-ID')} = Rp ${item.sub.toLocaleString('id-ID')}`, 25, y);
+          y += ITEM_HEIGHT;
         });
       } else {
+        if (y + ITEM_HEIGHT > PAGE_BOTTOM) {
+          doc.addPage();
+          y = 30;
+          doc.font('Helvetica-Bold').fontSize(9).text(`(Lanjutan Kamar ${row.kamar})`, 20, y);
+          y += 15;
+          doc.font('Helvetica').fontSize(9);
+        }
         doc.text('Belum ada laporan pemakaian barang', 25, y);
-        y += 12;
+        y += ITEM_HEIGHT;
       }
 
+      if (y + TOTAL_HEIGHT > PAGE_BOTTOM) {
+        doc.addPage();
+        y = 30;
+        doc.font('Helvetica-Bold').fontSize(9).text(`(Lanjutan Kamar ${row.kamar})`, 20, y);
+        y += 15;
+      }
       doc.font('Helvetica-Bold').fontSize(10);
       doc.text(`Total Biaya Kamar: Rp ${biayaKamar.toLocaleString('id-ID')}`, 25, y);
       totalBiaya += biayaKamar;
-      y += 20;
-
-      if (y > 520) { doc.addPage(); y = 30; }
+      y += TOTAL_HEIGHT + SPACING;
     });
 
-    doc.font('Helvetica-Bold').fontSize(11);
+    if (y + 30 > PAGE_BOTTOM) {
+      doc.addPage();
+      y = 30;
+    }
+    doc.font('Helvetica-Bold').fontSize(12);
     doc.text(`TOTAL KESELURUHAN: Rp ${totalBiaya.toLocaleString('id-ID')}`, 20, y);
     doc.end();
   });
@@ -721,6 +769,26 @@ app.get('/unduh-excel', async (req, res) => {
   try {
     const tanggal = req.query.tanggal || getTanggalWIB();
     const ra = req.query.ra || null;
+
+    // Build SQL query with proper field aliases
+    // BATH ROOM fields need _in suffix because Excel template has IN/OUT pairs
+    // GUEST SUPPLIES fields use original names (no suffix, single column)
+    const bathRoomFields = [
+      'sheet_twin', 'sheet_king', 'duvet_twin', 'duvet_king',
+      'bath_towel', 'hand_towel', 'bath_mat', 'pillow_case'
+    ];
+
+    const bathRoomSelects = bathRoomFields.map(f => `IFNULL(l.${f}, 0) AS ${f}_in`).join(',\n               ');
+
+    const guestSuppliesFields = [
+      'shower_cap', 'dental_kit', 'laundry_bag', 'laundry_list',
+      'note_pad', 'pensil', 'tissue_facial', 'tissue_roll',
+      'coffee', 'sugar', 'tea', 'creamer', 'mineral',
+      'cotton_bud', 'slipper', 'comb', 'shaving_kit',
+      'stirer', 'coster', 'poly_bag_kecil', 'poly_bag_besar'
+    ];
+
+    const guestSuppliesSelects = guestSuppliesFields.map(f => `IFNULL(l.${f}, 0) AS ${f}`).join(',\n               ');
 
     const daftarTugas = await new Promise((resolve, reject) => {
       let query = `
@@ -732,29 +800,8 @@ app.get('/unduh-excel', async (req, res) => {
                k.lantai,
                IFNULL(l.waktu_masuk, '-') AS waktu_masuk,
                IFNULL(l.waktu_keluar, '-') AS waktu_keluar,
-               IFNULL(l.sheet_twin, 0) AS sheet_twin_in,
-               IFNULL(l.sheet_king, 0) AS sheet_king_in,
-               IFNULL(l.duvet_twin, 0) AS duvet_twin_in,
-               IFNULL(l.duvet_king, 0) AS duvet_king_in,
-               IFNULL(l.bath_towel, 0) AS bath_towel_in,
-               IFNULL(l.hand_towel, 0) AS hand_towel_in,
-               IFNULL(l.bath_mat, 0) AS bath_mat_in,
-               IFNULL(l.pillow_case, 0) AS pillow_case_in,
-               IFNULL(l.shower_cap, 0) AS shower_cap_in,
-               IFNULL(l.dental_kit, 0) AS dental_kit_in,
-               IFNULL(l.laundry_bag, 0) AS laundry_bag_in,
-               IFNULL(l.laundry_list, 0) AS laundry_list_in,
-               IFNULL(l.tissue_facial, 0) AS tissue_facial_in,
-               IFNULL(l.tissue_roll, 0) AS tissue_roll_in,
-               IFNULL(l.cotton_bud, 0) AS cotton_bud_in,
-               IFNULL(l.slipper, 0) AS slipper_in,
-               IFNULL(l.comb, 0) AS comb_in,
-               IFNULL(l.shaving_kit, 0) AS shaving_kit_in,
-               IFNULL(l.stirer, 0) AS stirer_in,
-               IFNULL(l.poly_bag_kecil, 0) AS poly_bag_kecil_in,
-               IFNULL(l.poly_bag_besar, 0) AS poly_bag_besar_in,
-               IFNULL(l.pensil, 0) AS pensil_in,
-               IFNULL(l.note_pad, 0) AS note_pad_in
+               ${bathRoomSelects},
+               ${guestSuppliesSelects}
         FROM tugas t
         JOIN kamar k ON t.kamar = k.nomor_kamar
         LEFT JOIN laporan l ON t.tanggal = l.tanggal AND t.kamar = l.nomor_kamar
@@ -765,7 +812,18 @@ app.get('/unduh-excel', async (req, res) => {
       if (ra) { query += ` AND t.petugas = ?`; param.push(ra); }
       query += ` ORDER BY t.petugas, t.kamar`;
 
-      db.all(query, param, (err, rows) => err ? reject(err) : resolve(rows));
+      db.all(query, param, (err, rows) => {
+        if (err) {
+          console.error('❌ Error query Excel:', err.message);
+          return reject(err);
+        }
+        console.log('📊 Query Excel rows:', rows.length);
+        if (rows.length > 0) {
+          console.log('📊 Sample row keys:', Object.keys(rows[0]).slice(0, 20));
+          console.log('📊 Sample data (kamar 201):', rows.find(r => r.kamar === '201') || rows[0]);
+        }
+        resolve(rows);
+      });
     });
 
     const dataValid = daftarTugas.filter(item => item.petugas && item.petugas !== '');
@@ -786,6 +844,7 @@ app.get('/unduh-excel', async (req, res) => {
 
     let baris = 9;
     dataValid.forEach((data) => {
+      // === INFO DASAR ===
       sheet.getCell(`B${baris}`).value = data.kamar;
       sheet.getCell(`C${baris}`).value = data.status_fo || '';
 
@@ -807,57 +866,48 @@ app.get('/unduh-excel', async (req, res) => {
       sheet.getCell(`F${baris}`).value = data.waktu_masuk !== '-' ? data.waktu_masuk : '';
       sheet.getCell(`G${baris}`).value = data.waktu_keluar !== '-' ? data.waktu_keluar : '';
 
-      sheet.getCell(`H${baris}`).value = data.sheet_twin_in;
-      sheet.getCell(`I${baris}`).value = data.sheet_twin_in;
-      sheet.getCell(`J${baris}`).value = data.sheet_king_in;
-      sheet.getCell(`K${baris}`).value = data.sheet_king_in;
-      sheet.getCell(`L${baris}`).value = data.duvet_twin_in;
-      sheet.getCell(`M${baris}`).value = data.duvet_twin_in;
-      sheet.getCell(`N${baris}`).value = data.duvet_king_in;
-      sheet.getCell(`O${baris}`).value = data.duvet_king_in;
-      sheet.getCell(`P${baris}`).value = data.bath_towel_in;
-      sheet.getCell(`Q${baris}`).value = data.bath_towel_in;
-      sheet.getCell(`R${baris}`).value = data.hand_towel_in;
-      sheet.getCell(`S${baris}`).value = data.hand_towel_in;
-      sheet.getCell(`T${baris}`).value = data.bath_mat_in;
-      sheet.getCell(`U${baris}`).value = data.bath_mat_in;
-      sheet.getCell(`V${baris}`).value = data.pillow_case_in;
-      sheet.getCell(`W${baris}`).value = data.pillow_case_in;
-
       // === BATH ROOM (pasangan IN / OUT) ===
-      sheet.getCell(`H${baris}`).value = data.sheet_twin_in;
-      sheet.getCell(`I${baris}`).value = data.sheet_twin_in;
-      sheet.getCell(`J${baris}`).value = data.sheet_king_in;
-      sheet.getCell(`K${baris}`).value = data.sheet_king_in;
-      sheet.getCell(`L${baris}`).value = data.duvet_twin_in;
-      sheet.getCell(`M${baris}`).value = data.duvet_twin_in;
-      sheet.getCell(`N${baris}`).value = data.duvet_king_in;
-      sheet.getCell(`O${baris}`).value = data.duvet_king_in;
-      sheet.getCell(`P${baris}`).value = data.bath_towel_in;
-      sheet.getCell(`Q${baris}`).value = data.bath_towel_in;
-      sheet.getCell(`R${baris}`).value = data.hand_towel_in;
-      sheet.getCell(`S${baris}`).value = data.hand_towel_in;
-      sheet.getCell(`T${baris}`).value = data.bath_mat_in;
-      sheet.getCell(`U${baris}`).value = data.bath_mat_in;
-      sheet.getCell(`V${baris}`).value = data.pillow_case_in;
-      sheet.getCell(`W${baris}`).value = data.pillow_case_in;
+      // H = sheet_twin_in, I = sheet_twin_in (out)
+      sheet.getCell(`H${baris}`).value = data.sheet_twin_in || 0;
+      sheet.getCell(`I${baris}`).value = data.sheet_twin_in || 0;
+      sheet.getCell(`J${baris}`).value = data.sheet_king_in || 0;
+      sheet.getCell(`K${baris}`).value = data.sheet_king_in || 0;
+      sheet.getCell(`L${baris}`).value = data.duvet_twin_in || 0;
+      sheet.getCell(`M${baris}`).value = data.duvet_twin_in || 0;
+      sheet.getCell(`N${baris}`).value = data.duvet_king_in || 0;
+      sheet.getCell(`O${baris}`).value = data.duvet_king_in || 0;
+      sheet.getCell(`P${baris}`).value = data.bath_towel_in || 0;
+      sheet.getCell(`Q${baris}`).value = data.bath_towel_in || 0;
+      sheet.getCell(`R${baris}`).value = data.hand_towel_in || 0;
+      sheet.getCell(`S${baris}`).value = data.hand_towel_in || 0;
+      sheet.getCell(`T${baris}`).value = data.bath_mat_in || 0;
+      sheet.getCell(`U${baris}`).value = data.bath_mat_in || 0;
+      sheet.getCell(`V${baris}`).value = data.pillow_case_in || 0;
+      sheet.getCell(`W${baris}`).value = data.pillow_case_in || 0;
 
+      // === GUEST SUPPLIES & AMENITIES (hanya 1 kolom per item, tanpa IN/OUT) ===
       sheet.getCell(`AD${baris}`).value = data.shower_cap || 0;
-      sheet.getCell(`AB${baris}`).value = data.dental_kit || 0;
+      sheet.getCell(`AE${baris}`).value = data.dental_kit || 0;
       sheet.getCell(`AF${baris}`).value = data.laundry_bag || 0;
       sheet.getCell(`AG${baris}`).value = data.laundry_list || 0;
-
-      sheet.getCell(`AN${baris}`).value = data.sugar || 0;
-      sheet.getCell(`AO${baris}`).value = data.tea || 0;
-      sheet.getCell(`AM${baris}`).value = data.coffee || 0;
-      sheet.getCell(`AP${baris}`).value = data.creamer || 0;
-      sheet.getCell(`AQ${baris}`).value = data.mineral || 0;
+      sheet.getCell(`AH${baris}`).value = data.note_pad || 0;
+      sheet.getCell(`AI${baris}`).value = data.pensil || 0;
+      sheet.getCell(`AJ${baris}`).value = ''; // Guest Comment
       sheet.getCell(`AL${baris}`).value = data.tissue_facial || 0;
-      sheet.getCell(`X${baris}`).value = data.tissue_roll || 0;
-      sheet.getCell(`AW${baris}`).value = data.cotton_bud || 0;
-      sheet.getCell(`AE${baris}`).value = data.slipper || 0;
-      sheet.getCell(`AX${baris}`).value = data.comb || 0;
-      sheet.getCell(`AZ${baris}`).value = data.shaving_kit || 0;
+      sheet.getCell(`AM${baris}`).value = data.tissue_roll || 0;
+      sheet.getCell(`AN${baris}`).value = data.coffee || 0;
+      sheet.getCell(`AO${baris}`).value = data.sugar || 0;
+      sheet.getCell(`AP${baris}`).value = data.tea || 0;
+      sheet.getCell(`AQ${baris}`).value = data.creamer || 0;
+      sheet.getCell(`AR${baris}`).value = data.mineral || 0;
+      sheet.getCell(`AS${baris}`).value = data.cotton_bud || 0;
+      sheet.getCell(`AT${baris}`).value = data.slipper || 0;
+      sheet.getCell(`AU${baris}`).value = data.comb || 0;
+      sheet.getCell(`AV${baris}`).value = data.shaving_kit || 0;
+      sheet.getCell(`AW${baris}`).value = data.stirer || 0;
+      sheet.getCell(`AX${baris}`).value = data.coster || 0;
+      sheet.getCell(`AY${baris}`).value = data.poly_bag_kecil || 0;
+      sheet.getCell(`AZ${baris}`).value = data.poly_bag_besar || 0;
 
       baris++;
     });
