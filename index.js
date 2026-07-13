@@ -234,6 +234,44 @@ db.serialize(() => {
     dibuat_oleh TEXT,
     FOREIGN KEY (nomor_kamar) REFERENCES kamar(nomor_kamar) ON DELETE CASCADE
   )`);
+
+  // === TABEL DAILY LAUNDRY ===
+  db.run(`CREATE TABLE IF NOT EXISTS daily_laundry (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tanggal TEXT,
+    petugas TEXT,
+    sheet_twin INTEGER DEFAULT 0,
+    sheet_king INTEGER DEFAULT 0,
+    duvet_twin INTEGER DEFAULT 0,
+    duvet_king INTEGER DEFAULT 0,
+    pillow_case INTEGER DEFAULT 0,
+    bath_towel INTEGER DEFAULT 0,
+    hand_towel INTEGER DEFAULT 0,
+    bath_mat INTEGER DEFAULT 0,
+    inner_duvet_twin INTEGER DEFAULT 0,
+    inner_duvet_king INTEGER DEFAULT 0,
+    bed_pad_twin INTEGER DEFAULT 0,
+    bed_pad_king INTEGER DEFAULT 0,
+    pillow INTEGER DEFAULT 0,
+    dibuat_oleh TEXT,
+    waktu_input TEXT
+  )`);
+
+  // === TABEL STORE REQUEST ===
+  db.run(`CREATE TABLE IF NOT EXISTS store_request (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tanggal TEXT,
+    petugas TEXT,
+    kategori TEXT,
+    nama_barang TEXT,
+    harga INTEGER DEFAULT 0,
+    unit TEXT,
+    jumlah INTEGER DEFAULT 0,
+    total_harga INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'Pending',
+    dibuat_oleh TEXT,
+    waktu_input TEXT
+  )`);
 });
 
 const buatTugasBaruHariIni = () => {
@@ -559,14 +597,27 @@ app.get('/ot', (req, res) => {
     if (err) return res.redirect('/?pesan=gagal');
     db.all(`SELECT * FROM permintaan_tamu WHERE tanggal = ? ORDER BY waktu_masuk DESC, id DESC`, [hariIni], (err, daftarPermintaan) => {
       if (err) return res.redirect('/?pesan=gagal');
-      res.render('ot', {
-        user: req.session.user,
-        tanggal: hariIni,
-        daftarKamar: daftarKamar,
-        daftarPermintaan: daftarPermintaan,
-        pesan: res.locals.pesan,
-        waktuSekarang: getWaktuWIB(),
-        waktuSingkat: getWaktuWIBJamMenit()
+
+      // Ambil data daily laundry hari ini
+      db.all(`SELECT * FROM daily_laundry WHERE tanggal = ? ORDER BY waktu_input DESC`, [hariIni], (err, daftarLaundry) => {
+        if (err) return res.redirect('/?pesan=gagal');
+
+        // Ambil data store request hari ini
+        db.all(`SELECT * FROM store_request WHERE tanggal = ? ORDER BY waktu_input DESC`, [hariIni], (err, daftarStore) => {
+          if (err) return res.redirect('/?pesan=gagal');
+
+          res.render('ot', {
+            user: req.session.user,
+            tanggal: hariIni,
+            daftarKamar: daftarKamar,
+            daftarPermintaan: daftarPermintaan,
+            daftarLaundry: daftarLaundry || [],
+            daftarStore: daftarStore || [],
+            pesan: res.locals.pesan,
+            waktuSekarang: getWaktuWIB(),
+            waktuSingkat: getWaktuWIBJamMenit()
+          });
+        });
       });
     });
   });
@@ -601,6 +652,56 @@ app.post('/ubah-status-permintaan', (req, res) => {
 
 app.post('/hapus-permintaan', (req, res) => {
   db.run(`DELETE FROM permintaan_tamu WHERE id = ?`, [req.body.id], err => 
+    err ? res.redirect('/ot?pesan=gagal') : res.redirect('/ot?pesan=berhasil')
+  );
+});
+
+// === DAILY LAUNDRY ROUTES ===
+app.post('/tambah-laundry', (req, res) => {
+  const hariIni = getTanggalWIB();
+  const waktuInput = getWaktuWIBJamMenit();
+  const { petugas, sheet_twin, sheet_king, duvet_twin, duvet_king, pillow_case, bath_towel, hand_towel, bath_mat, inner_duvet_twin, inner_duvet_king, bed_pad_twin, bed_pad_king, pillow } = req.body;
+
+  db.run(`INSERT INTO daily_laundry (tanggal, petugas, sheet_twin, sheet_king, duvet_twin, duvet_king, pillow_case, bath_towel, hand_towel, bath_mat, inner_duvet_twin, inner_duvet_king, bed_pad_twin, bed_pad_king, pillow, dibuat_oleh, waktu_input)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [hariIni, petugas || '', 
+     parseInt(sheet_twin) || 0, parseInt(sheet_king) || 0, parseInt(duvet_twin) || 0, parseInt(duvet_king) || 0,
+     parseInt(pillow_case) || 0, parseInt(bath_towel) || 0, parseInt(hand_towel) || 0, parseInt(bath_mat) || 0,
+     parseInt(inner_duvet_twin) || 0, parseInt(inner_duvet_king) || 0, parseInt(bed_pad_twin) || 0, parseInt(bed_pad_king) || 0, parseInt(pillow) || 0,
+     req.session.user.nama, waktuInput],
+    err => err ? res.redirect('/ot?pesan=gagal') : res.redirect('/ot?pesan=berhasil')
+  );
+});
+
+app.post('/hapus-laundry', (req, res) => {
+  db.run(`DELETE FROM daily_laundry WHERE id = ?`, [req.body.id], err => 
+    err ? res.redirect('/ot?pesan=gagal') : res.redirect('/ot?pesan=berhasil')
+  );
+});
+
+// === STORE REQUEST ROUTES ===
+app.post('/tambah-store-request', (req, res) => {
+  const hariIni = getTanggalWIB();
+  const waktuInput = getWaktuWIBJamMenit();
+  const { kategori, nama_barang, harga, unit, jumlah } = req.body;
+  const total = (parseInt(harga) || 0) * (parseInt(jumlah) || 0);
+
+  db.run(`INSERT INTO store_request (tanggal, petugas, kategori, nama_barang, harga, unit, jumlah, total_harga, status, dibuat_oleh, waktu_input)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [hariIni, req.session.user.nama, kategori || '', nama_barang || '', parseInt(harga) || 0, unit || '', parseInt(jumlah) || 0, total, 'Pending', req.session.user.nama, waktuInput],
+    err => err ? res.redirect('/ot?pesan=gagal') : res.redirect('/ot?pesan=berhasil')
+  );
+});
+
+app.post('/ubah-status-store', (req, res) => {
+  const { id, status } = req.body;
+  db.run(`UPDATE store_request SET status = ? WHERE id = ?`, [status, id],
+    err => err ? res.redirect('/ot?pesan=gagal') : res.redirect('/ot?pesan=berhasil')
+  );
+});
+
+app.post('/hapus-store-request', (req, res) => {
+  db.run(`DELETE FROM store_request WHERE id = ?`, [req.body.id], err => 
     err ? res.redirect('/ot?pesan=gagal') : res.redirect('/ot?pesan=berhasil')
   );
 });
@@ -646,6 +747,92 @@ app.get('/unduh-pdf-ot', (req, res) => {
       doc.end();
     }
   );
+});
+
+// === PDF DAILY LAUNDRY ===
+app.get('/unduh-pdf-laundry', (req, res) => {
+  const tanggal = req.query.tanggal || getTanggalWIB();
+  db.all(`SELECT * FROM daily_laundry WHERE tanggal = ? ORDER BY waktu_input DESC`, [tanggal], (err, data) => {
+    if (err || !data || data.length === 0) return res.send('❌ Tidak ada data laundry');
+    const doc = new PDFDocument({ margin: 25, size: 'A4', layout: 'landscape' });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=Daily_Laundry_${tanggal}.pdf`);
+    doc.pipe(res);
+
+    doc.fontSize(18).font('Helvetica-Bold').text('HORISON HOTEL & CONVENTION', { align: 'center' });
+    doc.fontSize(14).text('Daily Laundry Report', { align: 'center', underline: true });
+    doc.moveDown(1);
+    doc.fontSize(11).text(`Tanggal: ${tanggal} | Dibuat: ${getWaktuWIB()} WIB`);
+    doc.moveDown(1);
+
+    const headers = ['No', 'Petugas', 'S.Twin', 'S.King', 'D.Twin', 'D.King', 'P.Case', 'B.Towel', 'H.Towel', 'B.Mat', 'I.D.Twin', 'I.D.King', 'B.P.Twin', 'B.P.King', 'Pillow'];
+    const colWidths = [30, 80, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45, 45];
+    let x = 25;
+    let y = doc.y;
+
+    doc.fontSize(9).font('Helvetica-Bold');
+    headers.forEach((h, i) => {
+      doc.text(h, x, y, { width: colWidths[i], align: 'center' });
+      x += colWidths[i];
+    });
+    y += 15; doc.moveTo(25, y).lineTo(760, y).stroke(); y += 5;
+
+    doc.fontSize(9).font('Helvetica');
+    data.forEach((row, i) => {
+      if (y > 520) { doc.addPage(); y = 40; }
+      x = 25;
+      const values = [String(i+1), row.petugas || '-', row.sheet_twin || 0, row.sheet_king || 0, row.duvet_twin || 0, row.duvet_king || 0, row.pillow_case || 0, row.bath_towel || 0, row.hand_towel || 0, row.bath_mat || 0, row.inner_duvet_twin || 0, row.inner_duvet_king || 0, row.bed_pad_twin || 0, row.bed_pad_king || 0, row.pillow || 0];
+      values.forEach((v, idx) => {
+        doc.text(String(v), x, y, { width: colWidths[idx], align: 'center' });
+        x += colWidths[idx];
+      });
+      y += 14;
+    });
+    doc.end();
+  });
+});
+
+// === PDF STORE REQUEST ===
+app.get('/unduh-pdf-store', (req, res) => {
+  const tanggal = req.query.tanggal || getTanggalWIB();
+  db.all(`SELECT * FROM store_request WHERE tanggal = ? ORDER BY kategori, nama_barang`, [tanggal], (err, data) => {
+    if (err || !data || data.length === 0) return res.send('❌ Tidak ada data store request');
+    const doc = new PDFDocument({ margin: 25, size: 'A4' });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=Store_Request_${tanggal}.pdf`);
+    doc.pipe(res);
+
+    doc.fontSize(18).font('Helvetica-Bold').text('HORISON HOTEL & CONVENTION', { align: 'center' });
+    doc.fontSize(14).text('Store Request Report', { align: 'center', underline: true });
+    doc.moveDown(1);
+    doc.fontSize(11).text(`Tanggal: ${tanggal} | Dibuat: ${getWaktuWIB()} WIB`);
+    doc.moveDown(1);
+
+    doc.fontSize(10).font('Helvetica-Bold');
+    let y = doc.y;
+    doc.text('No', 25, y, { width: 30 });
+    doc.text('Kategori', 55, y, { width: 100 });
+    doc.text('Barang', 160, y, { width: 150 });
+    doc.text('Harga', 315, y, { width: 70 });
+    doc.text('Jumlah', 390, y, { width: 50 });
+    doc.text('Total', 445, y, { width: 70 });
+    doc.text('Status', 520, y, { width: 70 });
+
+    y += 15; doc.moveTo(25, y).lineTo(590, y).stroke(); y += 8;
+    doc.fontSize(10).font('Helvetica');
+    data.forEach((row, i) => {
+      if (y > 720) { doc.addPage(); y = 40; }
+      doc.text(String(i+1), 25, y);
+      doc.text(row.kategori || '-', 55, y, { width: 100 });
+      doc.text(row.nama_barang || '-', 160, y, { width: 150 });
+      doc.text(`Rp ${(row.harga || 0).toLocaleString('id-ID')}`, 315, y, { width: 70 });
+      doc.text(String(row.jumlah || 0), 390, y, { width: 50 });
+      doc.text(`Rp ${(row.total_harga || 0).toLocaleString('id-ID')}`, 445, y, { width: 70 });
+      doc.text(row.status || 'Pending', 520, y, { width: 70 });
+      y += 18;
+    });
+    doc.end();
+  });
 });
 
 app.get('/unduh-pdf', (req, res) => {
@@ -1297,6 +1484,138 @@ app.get('/unduh-excel', async (req, res) => {
   }
 });
 
+// === EXCEL DAILY LAUNDRY ===
+app.get('/unduh-excel-laundry', async (req, res) => {
+  try {
+    const tanggal = req.query.tanggal || getTanggalWIB();
+    const data = await new Promise((resolve, reject) => {
+      db.all(`SELECT * FROM daily_laundry WHERE tanggal = ? ORDER BY waktu_input DESC`, [tanggal], (err, rows) => {
+        if (err) return reject(err);
+        resolve(rows);
+      });
+    });
+
+    if (data.length === 0) return res.send('❌ Tidak ada data laundry');
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Daily Laundry');
+
+    // Title
+    sheet.getCell('A1').value = 'DAILY LAUNDRY REPORT';
+    sheet.getCell('A1').font = { name: 'Calibri', bold: true, size: 14 };
+    sheet.mergeCells('A1:O1');
+    sheet.getCell('A2').value = `Tanggal: ${tanggal}`;
+    sheet.getCell('A2').font = { name: 'Calibri', size: 11 };
+
+    // Headers
+    const headers = ['No', 'Petugas', 'Sheet Twin', 'Sheet King', 'Duvet Twin', 'Duvet King', 'Pillow Case', 'Bath Towel', 'Hand Towel', 'Bath Mat', 'Inner Duvet Twin', 'Inner Duvet King', 'Bed Pad Twin', 'Bed Pad King', 'Pillow'];
+    const allBorder = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+    const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } };
+
+    headers.forEach((h, i) => {
+      const col = String.fromCharCode(65 + i);
+      const cell = sheet.getCell(col + '4');
+      cell.value = h;
+      cell.font = { name: 'Calibri', bold: true, size: 9 };
+      cell.fill = headerFill;
+      cell.alignment = { horizontal: 'center', vertical: 'center' };
+      cell.border = allBorder;
+      sheet.getColumn(col).width = 12;
+    });
+
+    // Data
+    data.forEach((row, i) => {
+      const r = i + 5;
+      const values = [i + 1, row.petugas || '', row.sheet_twin || 0, row.sheet_king || 0, row.duvet_twin || 0, row.duvet_king || 0, row.pillow_case || 0, row.bath_towel || 0, row.hand_towel || 0, row.bath_mat || 0, row.inner_duvet_twin || 0, row.inner_duvet_king || 0, row.bed_pad_twin || 0, row.bed_pad_king || 0, row.pillow || 0];
+      values.forEach((v, idx) => {
+        const col = String.fromCharCode(65 + idx);
+        const cell = sheet.getCell(col + r);
+        cell.value = v;
+        cell.font = { name: 'Calibri', size: 11 };
+        cell.alignment = { horizontal: 'center', vertical: 'center' };
+        cell.border = allBorder;
+      });
+    });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=Daily_Laundry_${tanggal}.xlsx`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('❌ Error:', err);
+    res.send('❌ Gagal membuat Excel: ' + err.message);
+  }
+});
+
+// === EXCEL STORE REQUEST ===
+app.get('/unduh-excel-store', async (req, res) => {
+  try {
+    const tanggal = req.query.tanggal || getTanggalWIB();
+    const data = await new Promise((resolve, reject) => {
+      db.all(`SELECT * FROM store_request WHERE tanggal = ? ORDER BY kategori, nama_barang`, [tanggal], (err, rows) => {
+        if (err) return reject(err);
+        resolve(rows);
+      });
+    });
+
+    if (data.length === 0) return res.send('❌ Tidak ada data store request');
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Store Request');
+
+    // Title
+    sheet.getCell('A1').value = 'STORE REQUEST HOUSEKEEPING';
+    sheet.getCell('A1').font = { name: 'Calibri', bold: true, size: 14 };
+    sheet.mergeCells('A1:H1');
+    sheet.getCell('A2').value = `Tanggal: ${tanggal}`;
+    sheet.getCell('A2').font = { name: 'Calibri', size: 11 };
+
+    // Headers
+    const headers = ['No', 'Kategori', 'Nama Barang', 'Harga', 'Unit', 'Jumlah', 'Total Harga', 'Status'];
+    const allBorder = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+    const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } };
+
+    headers.forEach((h, i) => {
+      const col = String.fromCharCode(65 + i);
+      const cell = sheet.getCell(col + '4');
+      cell.value = h;
+      cell.font = { name: 'Calibri', bold: true, size: 9 };
+      cell.fill = headerFill;
+      cell.alignment = { horizontal: 'center', vertical: 'center' };
+      cell.border = allBorder;
+    });
+    sheet.getColumn('A').width = 6;
+    sheet.getColumn('B').width = 20;
+    sheet.getColumn('C').width = 30;
+    sheet.getColumn('D').width = 15;
+    sheet.getColumn('E').width = 10;
+    sheet.getColumn('F').width = 10;
+    sheet.getColumn('G').width = 15;
+    sheet.getColumn('H').width = 12;
+
+    // Data
+    data.forEach((row, i) => {
+      const r = i + 5;
+      const values = [i + 1, row.kategori || '', row.nama_barang || '', row.harga || 0, row.unit || '', row.jumlah || 0, row.total_harga || 0, row.status || 'Pending'];
+      values.forEach((v, idx) => {
+        const col = String.fromCharCode(65 + idx);
+        const cell = sheet.getCell(col + r);
+        cell.value = v;
+        cell.font = { name: 'Calibri', size: 11 };
+        cell.alignment = { horizontal: 'center', vertical: 'center' };
+        cell.border = allBorder;
+      });
+    });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=Store_Request_${tanggal}.xlsx`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('❌ Error:', err);
+    res.send('❌ Gagal membuat Excel: ' + err.message);
+  }
+});
 
 app.get('/logout', (req, res) => {
   req.session.destroy(() => {
